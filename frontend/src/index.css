@@ -21,6 +21,55 @@
   box-shadow: 0 4px 20px -2px rgba(235, 0, 41, 0.12);
 }
 
+.banorte-bubble-glow {
+  box-shadow: 0 8px 30px 0 rgba(235, 0, 41, 0.4), 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Eye-catching floating animations */
+@keyframes banorte-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes banorte-pulse-halo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(235, 0, 41, 0.6), 0 0 0 0 rgba(235, 0, 41, 0.3);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(235, 0, 41, 0), 0 0 0 28px rgba(235, 0, 41, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(235, 0, 41, 0), 0 0 0 0 rgba(235, 0, 41, 0);
+  }
+}
+
+@keyframes banorte-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-banorte-float {
+  animation: banorte-float 3.5s ease-in-out infinite;
+}
+
+.animate-banorte-halo {
+  animation: banorte-pulse-halo 2.5s infinite;
+}
+
+.animate-shimmer-fast {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: banorte-shimmer 2.2s infinite;
+}
+
 /* Clean light scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -39,3 +88,4 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #EB0029;
 }
+
