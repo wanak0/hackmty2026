@@ -1,0 +1,172 @@
+{
+  "users": [
+    {
+      "id": "usr_carlos_01",
+      "name": "Carlos Mendoza",
+      "email": "carlos.mendoza@ejemplo.com",
+      "creditScore": 685,
+      "monthlyIncome": 28000,
+      "checkingBalance": 13650
+    },
+    {
+      "id": "usr_sofia_02",
+      "name": "Sofía Ramírez",
+      "email": "sofia.ramirez@ejemplo.com",
+      "creditScore": 760,
+      "monthlyIncome": 45000,
+      "checkingBalance": 52000
+    },
+    {
+      "id": "usr_roberto_03",
+      "name": "Roberto Treviño",
+      "email": "roberto.trevino@ejemplo.com",
+      "creditScore": 810,
+      "monthlyIncome": 65000,
+      "checkingBalance": 85000
+    }
+  ],
+  "creditCards": [
+    {
+      "id": "crd_carlos_oro",
+      "userId": "usr_carlos_01",
+      "cardName": "Banorte Por Ti Oro",
+      "last4": "4821",
+      "creditLimit": 35000,
+      "currentBalance": 18400,
+      "minimumPayment": 1690,
+      "interestRateAnnual": 46.5,
+      "catAnnual": 32.4,
+      "cutoffDate": "2026-09-18",
+      "paymentDueDate": "2026-10-08",
+      "status": "ACTIVE"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx_1789184850465",
+      "userId": "usr_carlos_01",
+      "concept": "Transf. a Pedro: la pizza",
+      "category": "Transferencias",
+      "amount": 350,
+      "date": "2026-09-12",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_1789184430786",
+      "userId": "usr_carlos_01",
+      "concept": "Transf. a Mamá (Rosa Mendoza): Apoyo familiar",
+      "category": "Transferencias",
+      "amount": 500,
+      "date": "2026-09-12",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_01",
+      "userId": "usr_carlos_01",
+      "concept": "Supermercado HEB San Pedro",
+      "category": "Despensa",
+      "amount": 2340.5,
+      "date": "2026-09-10",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_02",
+      "userId": "usr_carlos_01",
+      "concept": "Amazon México",
+      "category": "Compras",
+      "amount": 1890,
+      "date": "2026-09-08",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_03",
+      "userId": "usr_carlos_01",
+      "concept": "CFE Suministrador",
+      "category": "Servicios",
+      "amount": 845,
+      "date": "2026-09-05",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_04",
+      "userId": "usr_carlos_01",
+      "concept": "Uber Trips",
+      "category": "Transporte",
+      "amount": 420,
+      "date": "2026-09-04",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "tx_05",
+      "userId": "usr_carlos_01",
+      "concept": "Nómina Quincenal Banorte",
+      "category": "Ingreso",
+      "amount": 14000,
+      "date": "2026-08-31",
+      "type": "INCOME"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "cnt_01",
+      "name": "Mamá (Rosa Mendoza)",
+      "bank": "Banorte",
+      "clabe": "072580012345678901",
+      "alias": "Mamá"
+    },
+    {
+      "id": "cnt_02",
+      "name": "Arrendadora Valle (Renta)",
+      "bank": "BBVA",
+      "clabe": "012180004567891234",
+      "alias": "Renta"
+    },
+    {
+      "id": "cnt_03",
+      "name": "Juan Pérez",
+      "bank": "Santander",
+      "clabe": "014580009876543210",
+      "alias": "Juan Amigo"
+    }
+  ],
+  "operations": [
+    {
+      "operationId": "BNTE-RST-91114",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_18m",
+      "months": 18,
+      "monthlyQuota": 1215,
+      "appliedAt": "2026-09-12T03:40:19.752Z",
+      "status": "APPLIED"
+    },
+    {
+      "operationId": "SPEI-BNTE-187582",
+      "type": "TRANSFER",
+      "userId": "usr_carlos_01",
+      "recipient": "Mamá (Rosa Mendoza)",
+      "amount": 500,
+      "concept": "Apoyo familiar",
+      "timestamp": "2026-09-12T03:40:30.786Z"
+    },
+    {
+      "operationId": "BNTE-RST-91830",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_12m",
+      "months": 12,
+      "monthlyQuota": 1690,
+      "appliedAt": "2026-09-12T03:40:44.228Z",
+      "status": "APPLIED"
+    },
+    {
+      "operationId": "SPEI-BNTE-630999",
+      "type": "TRANSFER",
+      "userId": "usr_carlos_01",
+      "recipient": "Pedro",
+      "amount": 350,
+      "concept": "la pizza",
+      "timestamp": "2026-09-12T03:47:30.465Z"
+    }
+  ]
+}
