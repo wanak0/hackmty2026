@@ -33,9 +33,9 @@
       "last4": "4821",
       "creditLimit": 35000,
       "currentBalance": 18400,
-      "minimumPayment": 1472,
+      "minimumPayment": 1215,
       "interestRateAnnual": 46.5,
-      "catAnnual": 54.2,
+      "catAnnual": 34.1,
       "cutoffDate": "2026-09-18",
       "paymentDueDate": "2026-10-08",
       "status": "ACTIVE"
@@ -111,5 +111,26 @@
       "alias": "Juan Amigo"
     }
   ],
-  "operations": []
+  "operations": [
+    {
+      "operationId": "BNTE-RST-81320",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_18m",
+      "months": 18,
+      "monthlyQuota": 1215,
+      "appliedAt": "2026-09-12T08:46:48.765Z",
+      "status": "APPLIED"
+    },
+    {
+      "operationId": "BNTE-RST-18759",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_18m",
+      "months": 18,
+      "monthlyQuota": 1215,
+      "appliedAt": "2026-09-12T08:46:50.141Z",
+      "status": "APPLIED"
+    }
+  ]
 }

@@ -4,18 +4,11 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
-import {
-  getClientFinancialStatus,
-  simulateDebtRestructure,
-  applyDebtRestructuring,
-  simulateInvestmentPortfolio,
-  getTransactionHistory,
-  executeTransfer,
-  getFinancialHealthDiagnostic
-} from './tools.js';
+import { MCP_TOOL_DEFINITIONS, callMcpTool } from './registry.js';
 
 /**
- * Inicializa y expone el servidor oficial MCP de Banorte
+ * Servidor oficial MCP de Banorte.
+ * Comparte registry + callMcpTool con el orquestador HTTP (mismo contrato de tools).
  */
 export function createBanorteMcpServer() {
   const server = new Server(
@@ -30,142 +23,22 @@ export function createBanorteMcpServer() {
     }
   );
 
-  // Registro de herramientas disponibles
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      tools: [
-        {
-          name: 'get_client_financial_status',
-          description: 'Consulta saldos, cuentas de débito y tarjetas de crédito del usuario.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              userId: { type: 'string', description: 'ID del usuario (ej: usr_carlos_01)' }
-            },
-            required: ['userId']
-          }
-        },
-        {
-          name: 'simulate_debt_restructure',
-          description: 'Calcula opciones de amortización de deuda a 12, 18 y 24 meses.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              debtAmount: { type: 'number', description: 'Monto de deuda en MXN' }
-            },
-            required: ['debtAmount']
-          }
-        },
-        {
-          name: 'apply_debt_restructuring',
-          description: 'Aplica el plan de pagos congelados seleccionado y emite un folio bancario.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              userId: { type: 'string' },
-              cardId: { type: 'string' },
-              planId: { type: 'string' },
-              months: { type: 'number' },
-              monthlyQuota: { type: 'number' }
-            },
-            required: ['userId', 'cardId', 'planId', 'months', 'monthlyQuota']
-          }
-        },
-        {
-          name: 'simulate_investment_portfolio',
-          description: 'Simula rendimientos en Pagaré Banorte o Cetes según monto y días.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              amount: { type: 'number', description: 'Monto a invertir en MXN' },
-              days: { type: 'number', description: 'Plazo en días (28, 91, 180, 360)' }
-            }
-          }
-        },
-        {
-          name: 'get_transaction_history',
-          description: 'Obtiene los movimientos del mes, total de gastos y categoría más alta.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              userId: { type: 'string' }
-            },
-            required: ['userId']
-          }
-        },
-        {
-          name: 'execute_transfer',
-          description: 'Ejecuta una transferencia rápida SPEI entre cuentas.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              userId: { type: 'string' },
-              recipientName: { type: 'string' },
-              amount: { type: 'number' },
-              concept: { type: 'string' }
-            },
-            required: ['userId', 'recipientName', 'amount', 'concept']
-          }
-        },
-        {
-          name: 'get_financial_health_diagnostic',
-          description: 'Diagnóstico de score crediticio, ratio de endeudamiento (DTI) y recomendaciones.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              userId: { type: 'string' }
-            },
-            required: ['userId']
-          }
-        }
-      ]
+      tools: MCP_TOOL_DEFINITIONS.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema
+      }))
     };
   });
 
-  // Ejecución de herramientas
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
     try {
-      if (name === 'get_client_financial_status') {
-        const result = getClientFinancialStatus((args as any).userId);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'simulate_debt_restructure') {
-        const result = simulateDebtRestructure((args as any).debtAmount);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'apply_debt_restructuring') {
-        const { userId, cardId, planId, months, monthlyQuota } = args as any;
-        const result = applyDebtRestructuring(userId, cardId, planId, months, monthlyQuota);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'simulate_investment_portfolio') {
-        const { amount, days } = args as any;
-        const result = simulateInvestmentPortfolio(amount, days);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'get_transaction_history') {
-        const result = getTransactionHistory((args as any).userId);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'execute_transfer') {
-        const { userId, recipientName, amount, concept } = args as any;
-        const result = executeTransfer(userId, recipientName, amount, concept);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      if (name === 'get_financial_health_diagnostic') {
-        const result = getFinancialHealthDiagnostic((args as any).userId);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      throw new Error(`Herramienta desconocida: ${name}`);
+      const result = callMcpTool(name, (args || {}) as Record<string, unknown>);
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (error: any) {
       return {
         isError: true,
