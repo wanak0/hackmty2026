@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -9,184 +8,225 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { A2UIRenderer } from "../src/components/a2ui/A2UIRenderer";
-import { A2UIScreen } from "../src/types/a2ui";
+import { BanorteA2UICanvas } from "../src/components/a2ui/BanorteA2UICanvas";
+import type { A2UIChatResponse } from "../src/types/a2ui";
 
-const makeScreen = (components: A2UIScreen["components"]): A2UIScreen => ({
-  type: "a2ui_screen",
-  screenId: "test",
+const makeResponse = (
+  components: Array<Record<string, unknown>>,
+  dataModel: Record<string, unknown> = {},
+): A2UIChatResponse => ({
+  type: "a2ui_v09",
+  surfaceId: "test",
   assistantMessage: "Revisa los datos de ejemplo.",
-  components,
+  messages: [
+    {
+      version: "v0.9",
+      createSurface: {
+        surfaceId: "test",
+        catalogId: "a2ui-shadcn",
+        sendDataModel: true,
+      },
+    },
+    {
+      version: "v0.9",
+      updateDataModel: {
+        surfaceId: "test",
+        path: "/",
+        value: dataModel,
+      },
+    },
+    {
+      version: "v0.9",
+      updateComponents: {
+        surfaceId: "test",
+        components: [
+          {
+            id: "root",
+            component: "Column",
+            children: components.map((c) => String(c.id)),
+          },
+          ...components,
+        ] as any,
+      },
+    },
+  ],
 });
+
 afterEach(cleanup);
 
-describe("A2UI interaction contract", () => {
-  it("keeps edited transfer values stable and sends them on confirmation", async () => {
+describe("A2UI v0.9 standard catalog (a2ui-shadcn)", () => {
+  it("keeps edited TextField values and sends them on Button confirm", async () => {
     const onAction = vi.fn();
     render(
-      <A2UIRenderer
+      <BanorteA2UICanvas
         onAction={onAction}
-        screen={makeScreen([
+        response={makeResponse(
+          [
+            {
+              id: "amount",
+              component: "TextField",
+              label: "Importe a transferir",
+              value: { path: "/transfer/amount" },
+            },
+            {
+              id: "concept",
+              component: "TextField",
+              label: "Concepto del envío",
+              value: { path: "/transfer/concept" },
+            },
+            {
+              id: "confirm",
+              component: "Button",
+              text: "Continuar",
+              action: {
+                event: {
+                  name: "CONFIRM_TRANSFER",
+                  context: {
+                    recipient: { path: "/transfer/recipient" },
+                    amount: { path: "/transfer/amount" },
+                    concept: { path: "/transfer/concept" },
+                  },
+                },
+              },
+            },
+          ],
           {
-            id: "transfer",
-            type: "TransferCard",
-            props: {
+            transfer: {
               recipient: "Mamá",
-              amount: 500,
+              amount: "500",
               concept: "Apoyo",
-              sourceAccount: "Enlace Digital",
             },
           },
-          {
-            id: "confirm",
-            type: "ActionButton",
-            props: {
-              label: "Continuar",
-              actionType: "CONFIRM_TRANSFER",
-              amount: 500,
-              recipient: "Mamá",
-            },
-          },
-        ])}
+        )}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Modificar" }));
-    fireEvent.change(screen.getByLabelText("Importe a transferir"), {
-      target: { value: "750" },
-    });
-    fireEvent.change(screen.getByLabelText("Concepto del envío"), {
-      target: { value: "Despensa" },
-    });
+
+    const [amountInput, conceptInput] = screen.getAllByRole("textbox");
+    fireEvent.change(amountInput, { target: { value: "750" } });
+    fireEvent.change(conceptInput, { target: { value: "Despensa" } });
     await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(onAction).toHaveBeenCalledExactlyOnceWith(
       "CONFIRM_TRANSFER",
       expect.objectContaining({
-        amount: 750,
+        amount: "750",
         concept: "Despensa",
         recipient: "Mamá",
       }),
     );
   });
 
-  it("forwards ActionList payloads and disables every nested action while waiting", async () => {
+  it("forwards Button action.event and disables while loading", async () => {
     const onAction = vi.fn();
-    const data = makeScreen([
+    const data = makeResponse([
       {
-        id: "list",
-        type: "ActionList",
-        props: {
-          actions: [
-            {
-              label: "Revisar pago",
-              actionType: "PAY_CARD",
-              payload: { amount: 1200, cardId: "card_1" },
-            },
-          ],
+        id: "pay",
+        component: "Button",
+        text: "Revisar pago",
+        action: {
+          event: {
+            name: "PAY_CARD",
+            context: { amount: 1200, cardId: "card_1" },
+          },
         },
       },
     ]);
     const { rerender } = render(
-      <A2UIRenderer onAction={onAction} screen={data} />,
+      <BanorteA2UICanvas onAction={onAction} response={data} />,
     );
     await userEvent.click(screen.getByRole("button", { name: "Revisar pago" }));
     expect(onAction).toHaveBeenCalledWith(
       "PAY_CARD",
       expect.objectContaining({ amount: 1200, cardId: "card_1" }),
     );
-    rerender(<A2UIRenderer onAction={onAction} screen={data} loading />);
+    rerender(<BanorteA2UICanvas onAction={onAction} response={data} loading />);
     await userEvent.click(screen.getByRole("button", { name: "Revisar pago" }));
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it("lets keyboard users update a slider deliberately, with the visible value", async () => {
+  it("renders ChoicePicker plans from dataModel", async () => {
     const onAction = vi.fn();
     render(
-      <A2UIRenderer
+      <BanorteA2UICanvas
         onAction={onAction}
-        screen={makeScreen([
-          {
-            id: "slider",
-            type: "SliderInput",
-            props: {
-              label: "Importe",
-              min: 0,
-              max: 10000,
-              step: 100,
-              defaultValue: 1000,
-              actionType: "SLIDER_CHANGE",
-            },
-          },
-        ])}
-      />,
-    );
-    fireEvent.change(screen.getByLabelText("Importe"), {
-      target: { value: "2400" },
-    });
-    expect(onAction).not.toHaveBeenCalled();
-    screen.getByRole("button", { name: "Actualizar consulta" }).focus();
-    await userEvent.keyboard("{Enter}");
-    expect(onAction).toHaveBeenCalledExactlyOnceWith("SLIDER_CHANGE", {
-      value: 2400,
-    });
-  });
-
-  it("uses MCP investment results and requests a new calculation before confirming changed inputs", async () => {
-    const onAction = vi.fn();
-    render(
-      <A2UIRenderer
-        onAction={onAction}
-        screen={makeScreen([
-          {
-            id: "investment",
-            type: "InvestmentSimulator",
-            props: {
-              amount: 5000,
-              initialDays: 28,
+        response={makeResponse(
+          [
+            {
+              id: "picker",
+              component: "ChoicePicker",
+              value: { path: "/plans/selectedPlanId" },
               options: [
-                {
-                  id: "pagare",
-                  name: "Pagaré",
-                  annualRate: 11.25,
-                  termDays: 28,
-                  profitNet: 44,
-                  totalFinal: 5044,
-                },
+                { label: "12 meses", value: "plan_12m" },
+                { label: "18 meses", value: "plan_18m" },
               ],
             },
-          },
-        ])}
+            {
+              id: "apply",
+              component: "Button",
+              text: "Aplicar plan",
+              action: {
+                event: {
+                  name: "APPLY_RESTRUCTURE",
+                  context: { planId: { path: "/plans/selectedPlanId" } },
+                },
+              },
+            },
+          ],
+          { plans: { selectedPlanId: "plan_18m" } },
+        )}
       />,
     );
-    expect(screen.getByText("$44.00")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "91 días" }));
-    expect(
-      screen.queryByRole("button", { name: "Revisar esta inversión" }),
-    ).toBeNull();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actualizar cálculo" }),
-    );
-    await waitFor(() =>
-      expect(onAction).toHaveBeenCalledExactlyOnceWith("USER_PROMPT", {
-        text: "Simula una inversión de 5000 pesos a 91 días",
-      }),
+    await waitFor(() => {
+      expect(screen.getByText(/18 meses/i)).toBeTruthy();
+    });
+    await userEvent.click(screen.getByText(/12 meses/i));
+    await userEvent.click(screen.getByRole("button", { name: "Aplicar plan" }));
+    expect(onAction).toHaveBeenCalledWith(
+      "APPLY_RESTRUCTURE",
+      expect.objectContaining({ planId: "plan_12m" }),
     );
   });
 
-  it("renders non-restructure receipts without inventing a monthly payment", () => {
+  it("renders DonutChart from banorteChartRegistry", async () => {
     render(
-      <A2UIRenderer
+      <BanorteA2UICanvas
         onAction={vi.fn()}
-        screen={makeScreen([
+        response={makeResponse([
           {
-            id: "receipt",
-            type: "ConfirmationCard",
-            props: { operationId: "SPEI-TEST", amount: 750, recipient: "Mamá" },
+            id: "donut",
+            component: "DonutChart",
+            title: "Gastos del mes",
+            centerLabel: "Total",
+            centerValue: "$3,840",
+            segments: [
+              { label: "Despensa", value: 2340.5, color: "#EB0029" },
+              { label: "Otros", value: 1500, color: "#758894" },
+            ],
+          },
+          {
+            id: "bars",
+            component: "BarChart",
+            title: "Comparativa",
+            bars: [
+              { label: "12 meses", value: 1680 },
+              { label: "18 meses", value: 1215, highlight: true },
+            ],
+          },
+          {
+            id: "usage",
+            component: "ProgressBar",
+            label: "Uso de línea",
+            value: 52,
+            max: 100,
+            unit: "%",
           },
         ])}
       />,
     );
-    expect(screen.getByText("SPEI-TEST")).toBeTruthy();
-    expect(screen.getByText("$750.00")).toBeTruthy();
-    expect(screen.queryByText("Tu pago mensual")).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByText(/Gastos del mes/i)).toBeTruthy();
+      expect(screen.getByText(/Comparativa/i)).toBeTruthy();
+      expect(screen.getByText(/Uso de línea/i)).toBeTruthy();
+      expect(screen.getByText(/Despensa/i)).toBeTruthy();
+    });
   });
 });

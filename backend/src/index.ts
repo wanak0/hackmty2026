@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const NLP_MODEL = 'gemma4:31b';
+const NLP_MODEL = 'gpt-oss:120b';
 const A2UI_MODEL = 'gemma4:31b';
 
 app.use(cors());
@@ -19,15 +19,15 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Banorte A2UI Orchestrator & MCP Backend',
-    version: '2.1.0 (Pure A2UI pipeline)',
+    version: '2.2.0 (MCP server CallTool)',
     engine: 'Ollama Cloud',
-    nlpModel: process.env.OLLAMA_MODEL || NLP_MODEL,
+    nlpModel: process.env.NLP_MODEL || process.env.OLLAMA_MODEL || NLP_MODEL,
     a2uiModel: process.env.A2UI_MODEL || A2UI_MODEL,
     mcp: {
       tools: MCP_TOOL_DEFINITIONS.length,
-      registry: 'in-process + stdio server'
+      transport: 'in-memory client ↔ Banorte MCP server (+ stdio externo)'
     },
-    pipeline: 'NLP → MCP → A2UI'
+    pipeline: 'NLP → MCP CallTool → A2UI'
   });
 });
 
@@ -35,7 +35,7 @@ app.get('/api/config', (req, res) => {
   res.json({
     provider: 'Ollama Cloud',
     host: process.env.OLLAMA_HOST || 'https://ollama.com',
-    nlpModel: process.env.OLLAMA_MODEL || NLP_MODEL,
+    nlpModel: process.env.NLP_MODEL || process.env.OLLAMA_MODEL || NLP_MODEL,
     a2uiModel: process.env.A2UI_MODEL || A2UI_MODEL,
     hasApiKey: Boolean(
       process.env.OLLAMA_API_KEY && !process.env.OLLAMA_API_KEY.includes('tu_clave')
@@ -84,8 +84,12 @@ app.post('/api/reset', (req, res) => {
 });
 
 app.listen(Number(PORT), '0.0.0.0', () => {
+  const nlp = (process.env.NLP_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss:120b').trim();
+  const a2ui = (process.env.A2UI_MODEL || 'gemma4:31b').trim();
   console.log(`=========================================`);
   console.log(`🏦 BANORTE A2UI BACKEND & MCP ACTIVO`);
   console.log(`📡 URL: http://localhost:${PORT}`);
+  console.log(`🧠 NLP:  ${nlp}`);
+  console.log(`🎨 A2UI: ${a2ui}`);
   console.log(`=========================================`);
 });

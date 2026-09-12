@@ -8,7 +8,7 @@ import {
 import { processUserMessage } from "./src/agent/ollama.js";
 
 async function runVerification() {
-  console.log("🧪 INICIANDO VERIFICACIÓN DEL FLUJO A2UI PURO...\n");
+  console.log("🧪 INICIANDO VERIFICACIÓN DEL FLUJO A2UI v0.9 + MCP...\n");
 
   const originalData = loadBankData();
   try {
@@ -40,27 +40,24 @@ async function runVerification() {
     console.log();
 
     console.log(
-      "3. Generando pantalla dinámica A2UI (NLP → MCP → A2UI_MODEL)...",
+      "3. Generando superficie A2UI v0.9 (NLP → MCP → A2UI_MODEL)...",
     );
     const screen = await processUserMessage(
       "Quiero pagar menos intereses de mi tarjeta",
     );
-    console.log(`   ✓ Pantalla generada ID: ${screen.screenId}`);
-    console.log(
-      `   ✓ Componentes A2UI: ${screen.components.map((c) => c.type).join(", ")}`,
-    );
+    console.log(`   ✓ Surface ID: ${screen.surfaceId}`);
+    console.log(`   ✓ type: ${screen.type}`);
+    console.log(`   ✓ messages: ${screen.messages.length}`);
 
-    if (screen.screenId === "agent_generation_error")
+    if (screen.surfaceId === "agent_generation_error")
       throw new Error(
         "El modelo no generó una pantalla. Revisa la configuración de Ollama.",
       );
-    if (screen.screenId.includes("deterministic")) {
-      throw new Error(
-        "Se usó plantilla deterministic — se esperaba A2UI generado o error mínimo",
-      );
+    if (screen.type !== "a2ui_v09") {
+      throw new Error("Se esperaba type a2ui_v09");
     }
-    if (screen.components.length === 0) {
-      throw new Error("Pantalla A2UI sin componentes");
+    if (screen.messages.length === 0) {
+      throw new Error("Respuesta A2UI sin mensajes");
     }
     console.log();
 
@@ -69,24 +66,25 @@ async function runVerification() {
       action: "APPLY_RESTRUCTURE",
       planId: "plan_18m",
     });
-    console.log(`   ✓ Pantalla resultante: ${actionScreen.screenId}`);
-    if (actionScreen.screenId === "agent_generation_error")
+    console.log(`   ✓ Surface resultante: ${actionScreen.surfaceId}`);
+    if (actionScreen.surfaceId === "agent_generation_error")
       throw new Error(
         "La operación se registró pero falló la generación de su pantalla.",
       );
-    const confirmationComp = actionScreen.components.find(
-      (c) => c.type === "ConfirmationCard",
+    const comps =
+      (
+        actionScreen.messages.find((m) => "updateComponents" in m) as any
+      )?.updateComponents?.components || [];
+    const confirmationComp = comps.find(
+      (c: any) =>
+        c.component === "Card" ||
+        (c.component === "Text" && String(c.text || "").toLowerCase().includes("folio")),
     );
     if (confirmationComp) {
-      console.log(
-        `   ✓ Folio Bancario emitido: ${confirmationComp.props.operationId}`,
-      );
-      console.log(
-        `   ✓ Cuota: $${confirmationComp.props.monthlyQuota}/mes a ${confirmationComp.props.months} meses`,
-      );
+      console.log(`   ✓ Comprobante estándar presente en el catálogo a2ui-shadcn`);
     } else {
       console.log(
-        "   ⚠ ConfirmationCard no presente (modelo A2UI pudo variar layout); validando persistencia...",
+        "   ⚠ Layout de comprobante variable; validando persistencia...",
       );
     }
     console.log();
@@ -102,7 +100,7 @@ async function runVerification() {
     console.log();
 
     console.log("6. Restaurando los datos previos a la prueba.");
-    console.log("\n🎉 ¡TODAS LAS PRUEBAS DEL FLUJO A2UI PURO + MCP PASARON!");
+    console.log("\n🎉 ¡TODAS LAS PRUEBAS DEL FLUJO A2UI v0.9 + MCP PASARON!");
   } finally {
     saveBankData(originalData);
   }

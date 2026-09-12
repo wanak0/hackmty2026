@@ -33,9 +33,9 @@
       "last4": "4821",
       "creditLimit": 35000,
       "currentBalance": 18400,
-      "minimumPayment": 1215,
+      "minimumPayment": 980,
       "interestRateAnnual": 46.5,
-      "catAnnual": 34.1,
+      "catAnnual": 36,
       "cutoffDate": "2026-09-18",
       "paymentDueDate": "2026-10-08",
       "status": "ACTIVE"
@@ -130,6 +130,16 @@
       "months": 18,
       "monthlyQuota": 1215,
       "appliedAt": "2026-09-12T08:46:50.141Z",
+      "status": "APPLIED"
+    },
+    {
+      "operationId": "BNTE-RST-68662",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_24m",
+      "months": 24,
+      "monthlyQuota": 980,
+      "appliedAt": "2026-09-12T20:26:24.540Z",
       "status": "APPLIED"
     }
   ]

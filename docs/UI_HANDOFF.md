@@ -20,7 +20,8 @@ Inter se distribuye localmente en WOFF2 desde `@fontsource/inter` 5.3.0 con su l
 - Portada editorial con propuesta de valor sencilla: “Tu dinero, más claro”. La muestra visual está identificada como ejemplo.
 - Resumen bancario conectado a `/api/user/:id/status`, con estados de carga y error; nunca muestra un saldo de relleno como si se hubiera consultado.
 - Seis tareas con verbos cotidianos y un panel visible de Maya. Acceso directo al campo de consulta en móvil.
-- Resultados A2UI recursivos y conversación separados; la respuesta explicativa también acompaña la pantalla generada.
+- Resultados A2UI **v0.9** vía `a2ui-shadcn` (`A2UISurface`) con el **catálogo estándar**. El usuario puede pedir cambios de UI en chat y el lienzo se **refina** (`context.currentSurface`).
+- Las cifras vienen de tools MCP bancarias; no hay `get_ui_kit`. El normalizador evita textos `[object Object]`.
 - Letra grande persistente, foco visible, enlace para saltar al contenido, etiquetas de formularios, controles accesibles por teclado y reducción de movimiento.
 - Revisión con diálogo nativo antes de enviar acciones de pago, transferencia, inversión y reestructura; cancelar conserva los datos. El diálogo es parte de la UX de demostración, no un control de autorización bancaria.
 - Mensajes de espera honestos: no se simulan fases de razonamiento con temporizadores.

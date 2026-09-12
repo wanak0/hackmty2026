@@ -26,9 +26,47 @@
   font-display: swap;
   src: url("/fonts/inter-latin-700-normal.woff2") format("woff2");
 }
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* a2ui-shadcn adapters use Tailwind classes (bg-primary, …) inside node_modules */
+@source "../node_modules/a2ui-shadcn/dist/index.js";
+
+@theme {
+  --color-banorte-red: #eb0029;
+  --color-banorte-darkRed: #8f0017;
+  --color-banorte-lightRed: #fff0f1;
+  --color-banorte-bg: #f5f5f5;
+  --color-banorte-card: #ffffff;
+  --color-banorte-surface: #fafafa;
+  --color-banorte-input: #f3f4f6;
+  --color-banorte-border: #e6e6e6;
+  --color-banorte-borderLight: #f0f0f0;
+  --color-banorte-gold: #d97706;
+  --color-banorte-gray: #6b6b6b;
+  --color-banorte-textDark: #323e48;
+  --color-banorte-textMuted: #6b6b6b;
+  /* Semantic tokens consumed by a2ui-shadcn (bg-primary, text-foreground, …) */
+  --color-primary: #eb0029;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #fff3f4;
+  --color-secondary-foreground: #8f0017;
+  --color-background: #ffffff;
+  --color-foreground: #323e48;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #606b73;
+  --color-accent: #fff3f4;
+  --color-accent-foreground: #8f0017;
+  --color-destructive: #eb0029;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #dfe3e5;
+  --color-input: #e6e6e6;
+  --color-ring: #eb0029;
+  --color-card: #ffffff;
+  --color-card-foreground: #323e48;
+  --font-sans: Inter, Arial, sans-serif;
+  --font-display: Inter, Arial, sans-serif;
+}
+
 @layer base {
   :root {
     --red: #eb0029;
@@ -38,6 +76,26 @@
     --line: #dfe3e5;
     --paper: #f7f8fa;
     --blush: #fff3f4;
+    --banorte-wine: #8f0017;
+    --background: #ffffff;
+    --foreground: #323e48;
+    --card: #ffffff;
+    --card-foreground: #323e48;
+    --popover: #ffffff;
+    --popover-foreground: #323e48;
+    --primary: #eb0029;
+    --primary-foreground: #ffffff;
+    --secondary: #fff3f4;
+    --secondary-foreground: #8f0017;
+    --muted-foreground: #606b73;
+    --accent: #fff3f4;
+    --accent-foreground: #8f0017;
+    --destructive: #eb0029;
+    --destructive-foreground: #ffffff;
+    --border: #dfe3e5;
+    --input: #e6e6e6;
+    --ring: #eb0029;
+    --radius: 0.75rem;
   }
   html {
     font-family: Inter, Arial, sans-serif;
@@ -730,9 +788,10 @@
 }
 .workspace-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   align-items: start;
+  padding-bottom: 96px;
 }
 .bank-content {
   min-width: 0;
@@ -933,7 +992,20 @@
   margin-top: 6px;
 }
 .result-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
   color: var(--red);
+  cursor: pointer;
+}
+.result-symbol:hover {
+  border-color: #f3c5c8;
+  background: var(--blush);
 }
 .empty-result {
   display: flex;
@@ -1299,9 +1371,41 @@
   margin-top: 28px;
 }
 /* Legibility is a renderer invariant, independent of model layout choices. */
+.a2ui-canvas {
+  font-family: Inter, Arial, sans-serif;
+  color: var(--ink);
+}
 .a2ui-surface {
-  padding: 24px;
+  padding: 8px 4px 24px;
   overflow-wrap: anywhere;
+}
+.a2ui-canvas .bg-card,
+.a2ui-surface .bg-card {
+  padding: 1rem 1.125rem;
+  gap: 0.5rem;
+  border-color: var(--line);
+}
+.a2ui-canvas .bg-primary,
+.a2ui-surface .bg-primary {
+  background-color: #eb0029;
+  color: #fff;
+}
+.a2ui-canvas .bg-primary:hover,
+.a2ui-surface .bg-primary:hover {
+  background-color: #8f0017;
+}
+.a2ui-canvas table,
+.a2ui-surface table {
+  font-size: 0.95rem;
+}
+.a2ui-canvas .rounded-2xl.border,
+.a2ui-surface .rounded-2xl.border {
+  border-color: var(--line);
+  box-shadow: none;
+}
+.a2ui-canvas .text-gray-900,
+.a2ui-surface .text-gray-900 {
+  color: var(--ink);
 }
 .a2ui-surface .text-xs,
 .a2ui-surface .text-\[10px\],
@@ -1314,7 +1418,8 @@
   line-height: 1.65;
 }
 .a2ui-surface .text-gray-400,
-.a2ui-surface .text-gray-500 {
+.a2ui-surface .text-gray-500,
+.a2ui-surface .text-muted-foreground {
   color: #606b73;
 }
 .a2ui-surface .font-black,
@@ -1346,6 +1451,51 @@
 .bg-banorte-gradient,
 .bg-banorte-header-red {
   background: var(--red);
+}
+@keyframes banorte-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes banorte-halo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(235, 0, 41, 0.35);
+    opacity: 0.7;
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(235, 0, 41, 0);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.animate-banorte-float {
+  animation: banorte-float 3.2s ease-in-out infinite;
+}
+.animate-banorte-halo {
+  animation: banorte-halo 2.4s ease-out infinite;
+}
+.banorte-bubble-glow {
+  box-shadow: 0 10px 28px rgba(235, 0, 41, 0.35);
+}
+.maya-chat-modal {
+  max-height: min(82vh, 640px);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .large-text {
   font-size: 18px;
@@ -1386,7 +1536,7 @@
     width: calc(100% - 56px);
   }
   .workspace-layout {
-    grid-template-columns: minmax(0, 1fr) 310px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 22px;
   }
   .account-card {

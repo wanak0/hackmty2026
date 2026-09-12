@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,15 +14,14 @@ import {
   MessageCircle,
   PiggyBank,
   ReceiptText,
-  RotateCcw,
-  Send,
   ShieldCheck,
   Wallet,
   X,
 } from "lucide-react";
-import { A2UIScreen, ChatMessage } from "../../types/a2ui";
-import { A2UIRenderer } from "../a2ui/A2UIRenderer";
+import { A2UIChatResponse, ChatMessage } from "../../types/a2ui";
+import { BanorteA2UICanvas } from "../a2ui/BanorteA2UICanvas";
 import { BanorteLogo } from "../common/BanorteLogo";
+import { ChatBubbleModal } from "./ChatBubbleModal";
 
 interface ClientStatus {
   user: { name: string; checkingBalance: number };
@@ -90,11 +89,10 @@ export function ChatContainer({
   onBackToLanding: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [screen, setScreen] = useState<A2UIScreen | null>(null);
+  const [surface, setSurface] = useState<A2UIChatResponse | null>(null);
   const [clientStatus, setClientStatus] = useState<ClientStatus | null>(null);
   const [statusError, setStatusError] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showAmounts, setShowAmounts] = useState(true);
   const [largeText, setLargeText] = useState(
@@ -104,11 +102,10 @@ export function ChatContainer({
     null,
   );
   const [showHelp, setShowHelp] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const busy = useRef(false);
   const controller = useRef<AbortController | null>(null);
-  const conversationLog = useRef<HTMLDivElement>(null);
   const resultTitle = useRef<HTMLHeadingElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const fetchStatus = useCallback(async (signal?: AbortSignal) => {
@@ -132,10 +129,6 @@ export function ChatContainer({
       controller.current?.abort();
     };
   }, [fetchStatus]);
-  useEffect(() => {
-    if (messages.length && conversationLog.current)
-      conversationLog.current.scrollTop = conversationLog.current.scrollHeight;
-  }, [messages]);
   useEffect(() => {
     localStorage.setItem("banorte-large-text", String(largeText));
   }, [largeText]);
@@ -174,19 +167,23 @@ export function ChatContainer({
         signal: requestController.signal,
         body: JSON.stringify({
           message,
-          context: { ...context, userId: "usr_carlos_01" },
+          context: {
+            ...context,
+            userId: "usr_carlos_01",
+            ...(surface ? { currentSurface: surface } : {}),
+          },
           history,
         }),
       });
       if (!response.ok) throw new Error("response");
-      const data: A2UIScreen = await response.json();
+      const data: A2UIChatResponse = await response.json();
       if (
-        data.type !== "a2ui_screen" ||
-        !Array.isArray(data.components) ||
-        !data.components.length
+        data.type !== "a2ui_v09" ||
+        !Array.isArray(data.messages) ||
+        !data.messages.length
       )
         throw new Error("screen");
-      setScreen(data);
+      setSurface(data);
       setMessages((previous) => [
         ...previous,
         {
@@ -195,7 +192,7 @@ export function ChatContainer({
           content:
             data.assistantMessage ||
             "La información está lista. Revísala en tu pantalla.",
-          screen: data,
+          surface: data,
           timestamp: Date.now(),
         },
       ]);
@@ -265,17 +262,12 @@ export function ChatContainer({
     );
   };
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (!input.trim() || loading) return;
-    void requestScreen(input.trim());
-    setInput("");
-  };
   const confirmAction = async () => {
     if (!pendingAction || busy.current) return;
     const action = pendingAction;
     setPendingAction(null);
     if (action.type !== "RESET") {
+      setChatOpen(true);
       await requestScreen(
         `Acción confirmada: ${action.type}`,
         { ...action.payload, action: action.type },
@@ -290,7 +282,7 @@ export function ChatContainer({
       const response = await fetch("/api/reset", { method: "POST" });
       if (!response.ok) throw new Error("reset");
       setMessages([]);
-      setScreen(null);
+      setSurface(null);
       await fetchStatus();
     } catch {
       setError("No se pudo reiniciar la demostración. Inténtalo más tarde.");
@@ -390,7 +382,7 @@ export function ChatContainer({
             <p>Hoy es un buen día para tener tus cuentas claras.</p>
             <button
               className="mobile-maya-link"
-              onClick={() => inputRef.current?.focus()}
+              onClick={() => setChatOpen(true)}
             >
               <MessageCircle size={18} /> Escribir a Maya{" "}
               <ArrowRight size={16} />
@@ -422,7 +414,10 @@ export function ChatContainer({
               <div className="account-grid">
                 <button
                   className="account-card debit-account"
-                  onClick={() => void requestScreen(tasks[0].prompt)}
+                  onClick={() => {
+                    setChatOpen(true);
+                    void requestScreen(tasks[0].prompt);
+                  }}
                   disabled={loading}
                 >
                   <div className="account-top">
@@ -444,7 +439,10 @@ export function ChatContainer({
                 </button>
                 <button
                   className="account-card credit-account"
-                  onClick={() => void requestScreen(tasks[1].prompt)}
+                  onClick={() => {
+                    setChatOpen(true);
+                    void requestScreen(tasks[1].prompt);
+                  }}
                   disabled={loading}
                 >
                   <div className="account-top">
@@ -467,33 +465,6 @@ export function ChatContainer({
               </div>
             </section>
             <section
-              className="operations-section"
-              aria-labelledby="operations-title"
-            >
-              <div className="section-heading">
-                <h2 id="operations-title">¿Qué necesitas hacer?</h2>
-                <span>Elige una opción para empezar</span>
-              </div>
-              <div className="operation-grid">
-                {tasks.map(({ icon: Icon, title, detail, prompt }) => (
-                  <button
-                    key={title}
-                    disabled={loading}
-                    onClick={() => void requestScreen(prompt)}
-                  >
-                    <span className="operation-icon">
-                      <Icon size={23} strokeWidth={1.7} />
-                    </span>
-                    <div>
-                      <strong>{title}</strong>
-                      <span>{detail}</span>
-                    </div>
-                    <ChevronRight size={17} />
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section
               className="result-section"
               aria-labelledby="result-heading"
               aria-busy={loading}
@@ -502,14 +473,19 @@ export function ChatContainer({
                 <div>
                   <span className="eyebrow">A TU MEDIDA</span>
                   <h2 id="result-heading" ref={resultTitle} tabIndex={-1}>
-                    {screen
+                    {surface
                       ? "Tu consulta, paso a paso"
                       : "Aquí comienza tu siguiente paso"}
                   </h2>
                 </div>
-                <span className="result-symbol" aria-hidden="true">
+                <button
+                  type="button"
+                  className="result-symbol"
+                  aria-label="Abrir asistente Maya"
+                  onClick={() => setChatOpen(true)}
+                >
                   <MessageCircle size={22} />
-                </span>
+                </button>
               </div>
               {loading && (
                 <div className="loading-notice" role="status">
@@ -525,15 +501,15 @@ export function ChatContainer({
               {error && (
                 <div className="inline-error request-error" role="alert">
                   <p>{error}</p>
-                  <button onClick={() => inputRef.current?.focus()}>
+                  <button onClick={() => setChatOpen(true)}>
                     Escribir a Maya <ArrowRight size={16} />
                   </button>
                 </div>
               )}
-              {screen ? (
-                <A2UIRenderer
-                  key={screen.screenId}
-                  screen={screen}
+              {surface ? (
+                <BanorteA2UICanvas
+                  key={surface.surfaceId}
+                  response={surface}
                   onAction={onAction}
                   loading={loading}
                 />
@@ -549,21 +525,32 @@ export function ChatContainer({
                     <div>
                       <h3>Lo que necesitas, explicado con claridad.</h3>
                       <p>
-                        Elige una opción de arriba o cuéntale a Maya.
+                        Abre la burbuja de Maya y elige una tarea, o escríbele.
                         <br />
                         Aquí verás la información y los pasos para continuar.
                       </p>
+                      <button
+                        type="button"
+                        className="button primary"
+                        style={{ marginTop: 16 }}
+                        onClick={() => setChatOpen(true)}
+                      >
+                        Hablar con Maya <MessageCircle size={17} />
+                      </button>
                     </div>
                   </div>
                 )
               )}
-              {screen?.suggestedPrompts && (
+              {surface?.suggestedPrompts && (
                 <div className="result-suggestions">
-                  {screen.suggestedPrompts.map((text) => (
+                  {surface.suggestedPrompts.map((text) => (
                     <button
                       key={text}
                       disabled={loading}
-                      onClick={() => void requestScreen(text)}
+                      onClick={() => {
+                        setChatOpen(true);
+                        void requestScreen(text);
+                      }}
                     >
                       {text}
                       <ArrowRight size={16} />
@@ -580,110 +567,23 @@ export function ChatContainer({
               </span>
             </div>
           </div>
-          <aside className="assistant-panel" aria-label="Conversación con Maya">
-            <div className="assistant-header">
-              <span className="maya-icon">
-                <MessageCircle size={24} />
-              </span>
-              <div>
-                <h2>Maya</h2>
-                <p>Tu asistente Banorte</p>
-              </div>
-              <span className="assistant-badge">A tu lado</span>
-            </div>
-            <div className="assistant-intro">
-              <h3>Lo vemos juntos.</h3>
-              <p>
-                Estoy aquí para ayudarte con tus cuentas. ¿Qué necesitas hoy?
-              </p>
-            </div>
-            <div
-              className="conversation"
-              ref={conversationLog}
-              role="log"
-              aria-label="Mensajes con Maya"
-              aria-live="polite"
-            >
-              {messages.length === 0 ? (
-                <div className="conversation-example">
-                  <p>Puedes escribir algo como:</p>
-                  <button
-                    disabled={loading}
-                    onClick={() =>
-                      void requestScreen(
-                        "Quiero saber cuánto debo de mi tarjeta",
-                      )
-                    }
-                  >
-                    “Quiero saber cuánto debo de mi tarjeta”
-                    <ArrowUpRight size={18} />
-                  </button>
-                  <span>No necesitas usar palabras complicadas.</span>
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`conversation-message ${message.role}`}
-                  >
-                    <span>{message.role === "user" ? "Tú" : "Maya"}</span>
-                    <p>{message.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-            <form onSubmit={submit} className="composer">
-              <label htmlFor="maya-message">Escribe aquí tu consulta</label>
-              <textarea
-                id="maya-message"
-                ref={inputRef}
-                value={input}
-                maxLength={2000}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !event.shiftKey &&
-                    !event.nativeEvent.isComposing
-                  ) {
-                    event.preventDefault();
-                    if (input.trim() && !loading) {
-                      void requestScreen(input.trim());
-                      setInput("");
-                    }
-                  }
-                }}
-                placeholder="Por ejemplo: ¿cuánto puedo ahorrar?"
-                rows={3}
-              />
-              <button
-                className="button primary"
-                disabled={loading || !input.trim()}
-                type="submit"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" /> Esperando
-                    respuesta
-                  </>
-                ) : (
-                  <>
-                    Enviar a Maya <Send size={17} />
-                  </>
-                )}
-              </button>
-              <p>Evita escribir contraseñas o números de tarjeta.</p>
-            </form>
-            <button
-              className="reset-demo"
-              disabled={loading}
-              onClick={() => setPendingAction({ type: "RESET", payload: {} })}
-            >
-              <RotateCcw size={16} /> Reiniciar demostración
-            </button>
-          </aside>
         </div>
       </main>
+      <ChatBubbleModal
+        messages={messages}
+        loading={loading}
+        isOpen={chatOpen}
+        onToggle={() => setChatOpen((open) => !open)}
+        onClose={() => setChatOpen(false)}
+        hasGeneratedScreen={Boolean(surface)}
+        suggestedPrompts={surface?.suggestedPrompts}
+        tasks={tasks}
+        onSendMessage={(text) => {
+          setChatOpen(true);
+          void requestScreen(text);
+        }}
+        onResetDemo={() => setPendingAction({ type: "RESET", payload: {} })}
+      />
       <footer className="dashboard-footer page-width">
         <span>Banorte × Tec de Monterrey · HackMTY 2026</span>
         <button onClick={onBackToLanding} disabled={loading}>
@@ -752,7 +652,11 @@ export function ChatContainer({
                       }
                     </dt>
                     <dd>
-                      {key === "amount" ? money(Number(value)) : String(value)}
+                      {key === "amount"
+                        ? money(Number(value))
+                        : typeof value === "object"
+                          ? JSON.stringify(value)
+                          : String(value ?? "")}
                     </dd>
                   </div>
                 ))}

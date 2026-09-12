@@ -12,8 +12,7 @@ import {
   getTransactionHistory,
   payCreditCard,
   executeTransfer,
-  getFinancialHealthDiagnostic,
-  getUiKit
+  getFinancialHealthDiagnostic
 } from './tools.js';
 
 export const MCP_TOOL_DEFINITIONS = [
@@ -128,23 +127,6 @@ export const MCP_TOOL_DEFINITIONS = [
       },
       required: ['userId']
     }
-  },
-  {
-    name: 'get_ui_kit',
-    description:
-      'Kit visual A2UI: catálogo de íconos, series para gráficas (Donut/Bar/Progress) y bloques default con datos reales del usuario.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        userId: { type: 'string' },
-        focus: {
-          type: 'string',
-          description:
-            'auto|spending|debt|balances|health|investment|card_payment — tipifica la composición recomendada'
-        }
-      },
-      required: ['userId']
-    }
   }
 ] as const;
 
@@ -197,8 +179,6 @@ export function callMcpTool(name: string, args: Record<string, unknown> = {}): u
       );
     case 'get_financial_health_diagnostic':
       return getFinancialHealthDiagnostic(String(args.userId));
-    case 'get_ui_kit':
-      return getUiKit(String(args.userId), args.focus ? String(args.focus) : 'auto');
     default:
       throw new Error(`Herramienta MCP desconocida: ${name}`);
   }

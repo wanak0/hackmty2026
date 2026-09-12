@@ -1,23 +1,19 @@
 import dotenv from 'dotenv';
 import { SYSTEM_PROMPT } from './prompts.js';
-import { callMcpTool, MCP_TOOL_DEFINITIONS } from '../mcp/registry.js';
+import { MCP_TOOL_DEFINITIONS } from '../mcp/registry.js';
+import { callMcpToolViaServer } from '../mcp/client.js';
+import {
+  type A2UIChatResponse,
+  buildErrorResponse,
+  buildResponseFromMcpContext,
+  isCompleteA2UIResponse,
+  normalizeA2UIResponse,
+} from './a2uiV09.js';
 
 dotenv.config();
 
-export interface A2UIComponent {
-  id: string;
-  type: string;
-  props: Record<string, any>;
-  children?: A2UIComponent[];
-}
-
-export interface A2UIScreen {
-  type: 'a2ui_screen';
-  screenId: string;
-  assistantMessage: string;
-  components: A2UIComponent[];
-  suggestedPrompts?: string[];
-}
+export type { A2UIChatResponse } from './a2uiV09.js';
+export { normalizeA2UIResponse as normalizeA2UIScreen } from './a2uiV09.js';
 
 export interface HistoryItem {
   role: 'user' | 'assistant';
@@ -31,16 +27,18 @@ interface NlpPlan {
 
 const DEFAULT_USER = 'usr_carlos_01';
 const DEFAULT_CARD = 'crd_carlos_oro';
-const NLP_MODEL = () => (process.env.OLLAMA_MODEL || 'gemma4:31b').trim();
+const NLP_MODEL = () =>
+  (process.env.NLP_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss:120b').trim();
 const A2UI_MODEL = () => (process.env.A2UI_MODEL || 'gemma4:31b').trim();
 
 const NLP_SYSTEM = `Eres el clasificador NLP de Banorte. Responde SOLO JSON válido:
 {
-  "intent": "debt|card_payment|investment|transfer|transactions|health|balances|general",
+  "intent": "debt|card_payment|investment|transfer|transactions|health|balances|ui_refine|general",
   "tools": [{ "name": "<mcp_tool_name>", "args": { ... } }]
 }
-Tools MCP disponibles: ${MCP_TOOL_DEFINITIONS.map((t) => t.name).join(', ')}.
+Tools MCP (vía servidor): ${MCP_TOOL_DEFINITIONS.map((t) => t.name).join(', ')}.
 Reglas:
+- pedidos de DISEÑO / UI (cambia layout, agrega/quita botón/tabla/tarjeta, más grande, reordena, "haz dos columnas", "quita el progress") → intent ui_refine y tools: [] (el A2UI edita la superficie actual)
 - pagar tarjeta / abonar TDC / pago mínimo / liquidar saldo (NO reestructura) → get_client_financial_status
 - debt / intereses / reestructurar → get_client_financial_status + simulate_debt_restructure
 - investment / pagaré → get_client_financial_status + simulate_investment_portfolio
@@ -48,8 +46,7 @@ Reglas:
 - gastos / movimientos → get_transaction_history
 - salud crediticia → get_financial_health_diagnostic
 - saldos → get_client_financial_status
-- SIEMPRE puedes incluir get_ui_kit para gráficas/íconos/bloques default
-Usa userId "usr_carlos_01" por defecto. No inventes tools. Sin markdown.`;
+Usa userId "usr_carlos_01" por defecto. No inventes tools. Sin markdown. Sin get_ui_kit.`;
 
 function cleanJsonString(raw: string): string {
   let cleaned = raw
@@ -123,433 +120,25 @@ async function callOllamaRaw(
   }
 }
 
-const KNOWN_ACTION_TYPES = new Set([
-  'APPLY_RESTRUCTURE',
-  'CONFIRM_INVESTMENT',
-  'CONFIRM_TRANSFER',
-  'SELECT_PLAN',
-  'SHOW_DEBT_RESTRUCTURE_OPTIONS',
-  'SHOW_INVESTMENT',
-  'VIEW_TRANSACTIONS',
-  'VIEW_ACCOUNT',
-  'VIEW_BALANCES',
-  'PAY_CARD',
-  'USER_PROMPT'
-]);
-
-function hasNonEmptyString(v: unknown): boolean {
-  return typeof v === 'string' && v.trim().length > 0;
-}
-
-function hasFiniteNumber(v: unknown): boolean {
-  return typeof v === 'number' && Number.isFinite(v);
-}
-
-/**
- * Verifica que un control interactivo tenga actionType conocido y payload usable.
- * Si no se puede reparar con datos MCP, se descarta (no se dibuja muerto).
- */
-function sanitizeInteractiveComponent(
-  comp: A2UIComponent,
-  userId: string,
-  mcpHint?: Record<string, unknown>
-): A2UIComponent | null {
-  const type = comp.type;
-  const props = { ...(comp.props || {}) };
-
-  if (type === 'ActionButton') {
-    if (!hasNonEmptyString(props.label)) return null;
-    let actionType = String(props.actionType || '').trim();
-    if (!KNOWN_ACTION_TYPES.has(actionType)) {
-      // Intentar inferir
-      const label = String(props.label).toLowerCase();
-      if (/aplicar|reestructur|plan/.test(label)) actionType = 'APPLY_RESTRUCTURE';
-      else if (/invert/.test(label)) actionType = 'CONFIRM_INVESTMENT';
-      else if (/transfer|spei|enviar/.test(label)) actionType = 'CONFIRM_TRANSFER';
-      else if (/gasto|movimiento/.test(label)) actionType = 'VIEW_TRANSACTIONS';
-      else if (/saldo/.test(label)) actionType = 'VIEW_BALANCES';
-      else return null;
-      props.actionType = actionType;
-    }
-
-    if (actionType === 'APPLY_RESTRUCTURE') {
-      const planFromPayload =
-        props.payload && typeof props.payload === 'object'
-          ? (props.payload as any).planId
-          : undefined;
-      if (!hasNonEmptyString(props.planId) && !hasNonEmptyString(planFromPayload)) {
-        const status =
-          (mcpHint?.get_client_financial_status as any) ||
-          callMcpTool('get_client_financial_status', { userId });
-        const sim =
-          (mcpHint?.simulate_debt_restructure as any) ||
-          callMcpTool('simulate_debt_restructure', { debtAmount: status.totalDebt });
-        const plan = sim.options?.find((o: any) => o.recommended) || sim.options?.[1];
-        if (!plan?.planId) return null;
-        props.planId = plan.planId;
-      } else if (!hasNonEmptyString(props.planId) && hasNonEmptyString(planFromPayload)) {
-        props.planId = planFromPayload;
-      }
-    }
-
-    if (actionType === 'CONFIRM_INVESTMENT') {
-      if (!hasFiniteNumber(props.amount)) props.amount = 5000;
-      if (!hasFiniteNumber(props.days) && !hasFiniteNumber(props.initialDays)) props.days = 91;
-      else if (!hasFiniteNumber(props.days)) props.days = props.initialDays;
-    }
-
-    if (actionType === 'CONFIRM_TRANSFER') {
-      if (!hasNonEmptyString(props.recipient)) props.recipient = 'Mamá (Rosa Mendoza)';
-      if (!hasFiniteNumber(props.amount)) props.amount = 500;
-      if (!hasNonEmptyString(props.concept)) props.concept = 'Apoyo familiar';
-    }
-
-    if (actionType === 'PAY_CARD') {
-      const status =
-        (mcpHint?.get_client_financial_status as any) ||
-        callMcpTool('get_client_financial_status', { userId });
-      const card = status?.cards?.[0];
-      const fromPayload =
-        props.payload && typeof props.payload === 'object'
-          ? Number((props.payload as any).amount)
-          : NaN;
-      if (!hasFiniteNumber(props.amount)) {
-        props.amount = Number.isFinite(fromPayload) && fromPayload > 0
-          ? fromPayload
-          : Number(card?.minimumPayment) || 980;
-      }
-      if (!hasNonEmptyString(props.cardId) && card?.id) props.cardId = card.id;
-      props.payload = {
-        ...(props.payload || {}),
-        amount: props.amount,
-        cardId: props.cardId || card?.id
-      };
-    }
-
-    if (actionType === 'USER_PROMPT') {
-      const text = props.payload?.text || props.text || props.label;
-      if (!hasNonEmptyString(text)) return null;
-      props.payload = { ...(props.payload || {}), text };
-    }
-
-    return { ...comp, props };
-  }
-
-  if (type === 'OptionPills') {
-    const rawOpts = Array.isArray(props.options) ? props.options : [];
-    const options = rawOpts
-      .map((opt: any, idx: number) => {
-        if (!opt || !hasNonEmptyString(opt.label)) return null;
-        let actionType = String(opt.actionType || '').trim();
-        const payload = { ...(opt.payload || {}) };
-        if (opt.planId && !payload.planId) payload.planId = opt.planId;
-        if (opt.id && !payload.planId && String(opt.id).startsWith('plan_')) {
-          payload.planId = opt.id;
-        }
-
-        if (!KNOWN_ACTION_TYPES.has(actionType)) {
-          if (payload.planId || opt.planId) actionType = 'APPLY_RESTRUCTURE';
-          else if (/invert|pagare/.test(String(opt.label).toLowerCase()))
-            actionType = 'SHOW_INVESTMENT';
-          else if (/gasto/.test(String(opt.label).toLowerCase())) actionType = 'VIEW_TRANSACTIONS';
-          else return null;
-        }
-
-        if (actionType === 'APPLY_RESTRUCTURE' && !hasNonEmptyString(payload.planId)) {
-          return null;
-        }
-        if (actionType === 'PAY_CARD') {
-          const status =
-            (mcpHint?.get_client_financial_status as any) ||
-            callMcpTool('get_client_financial_status', { userId });
-          const card = status?.cards?.[0];
-          const amt = Number(payload.amount ?? opt.amount);
-          payload.amount =
-            Number.isFinite(amt) && amt > 0
-              ? amt
-              : Number(card?.minimumPayment) || 980;
-          if (!payload.cardId && card?.id) payload.cardId = card.id;
-        }
-        if (actionType === 'USER_PROMPT' && !hasNonEmptyString(payload.text)) {
-          payload.text = opt.label;
-        }
-
-        return {
-          id: opt.id || `opt_${idx}`,
-          label: opt.label,
-          actionType,
-          payload,
-          selected: !!opt.selected
-        };
-      })
-      .filter(Boolean);
-
-    if (options.length === 0) {
-      // Reparar con planes MCP si el contexto es deuda
-      const status =
-        (mcpHint?.get_client_financial_status as any) ||
-        callMcpTool('get_client_financial_status', { userId });
-      const sim =
-        (mcpHint?.simulate_debt_restructure as any) ||
-        callMcpTool('simulate_debt_restructure', { debtAmount: status.totalDebt });
-      if (!sim?.options?.length) return null;
-      props.options = sim.options.map((o: any) => ({
-        id: o.planId,
-        label: `${o.months} meses · $${o.monthlyPayment}/mes`,
-        actionType: 'APPLY_RESTRUCTURE',
-        payload: { planId: o.planId },
-        selected: !!o.recommended
-      }));
-      props.label = props.label || 'Elige un plazo';
-      return { ...comp, props };
-    }
-
-    props.options = options;
-    return { ...comp, props };
-  }
-
-  if (type === 'ActionList') {
-    const rawActs = Array.isArray(props.actions) ? props.actions : [];
-    const actions = rawActs
-      .map((act: any) => {
-        if (!act || !hasNonEmptyString(act.label)) return null;
-        let actionType = String(act.actionType || '').trim();
-        if (!KNOWN_ACTION_TYPES.has(actionType)) {
-          const l = String(act.label).toLowerCase();
-          if (/deuda|interes|reestructur/.test(l)) actionType = 'SHOW_DEBT_RESTRUCTURE_OPTIONS';
-          else if (/invert/.test(l)) actionType = 'SHOW_INVESTMENT';
-          else if (/gasto/.test(l)) actionType = 'VIEW_TRANSACTIONS';
-          else if (/saldo/.test(l)) actionType = 'VIEW_BALANCES';
-          else actionType = 'USER_PROMPT';
-        }
-        const payload = { ...(act.payload || {}) };
-        if (actionType === 'USER_PROMPT' && !hasNonEmptyString(payload.text)) {
-          payload.text = act.label;
-        }
-        return { label: act.label, actionType, payload };
-      })
-      .filter(Boolean);
-
-    if (actions.length === 0) return null;
-    props.actions = actions;
-    return { ...comp, props };
-  }
-
-  if (type === 'PlanOptionList') {
-    if (!Array.isArray(props.options) || props.options.length === 0) {
-      const status =
-        (mcpHint?.get_client_financial_status as any) ||
-        callMcpTool('get_client_financial_status', { userId });
-      const sim =
-        (mcpHint?.simulate_debt_restructure as any) ||
-        callMcpTool('simulate_debt_restructure', { debtAmount: status.totalDebt });
-      if (!sim?.options?.length) return null;
-      props.options = sim.options;
-      props.selectedPlanId =
-        props.selectedPlanId ||
-        sim.options.find((o: any) => o.recommended)?.planId ||
-        sim.options[0].planId;
-    }
-    const valid = props.options.filter(
-      (o: any) =>
-        o &&
-        hasNonEmptyString(o.planId) &&
-        hasFiniteNumber(o.months) &&
-        hasFiniteNumber(o.monthlyPayment)
-    );
-    if (valid.length === 0) return null;
-    props.options = valid;
-    return { ...comp, props };
-  }
-
-  if (type === 'SliderInput') {
-    if (!hasNonEmptyString(props.label)) return null;
-    if (!hasFiniteNumber(props.min) || !hasFiniteNumber(props.max)) return null;
-    if (!hasFiniteNumber(props.defaultValue)) {
-      props.defaultValue = props.min;
-    }
-    if (!hasNonEmptyString(props.actionType)) {
-      props.actionType = 'USER_PROMPT';
-      props.payload = { text: `Ajustar ${props.label} a ${props.defaultValue}` };
-    }
-    return { ...comp, props };
-  }
-
-  if (type === 'InvestmentSimulator') {
-    if (!Array.isArray(props.options) || props.options.length === 0) return null;
-    return { ...comp, props };
-  }
-
-  if (type === 'TransferCard') {
-    if (!hasNonEmptyString(props.recipient) || !hasFiniteNumber(props.amount)) return null;
-    return { ...comp, props };
-  }
-
-  // Contenedores: sanitizar children
-  if ((type === 'Card' || type === 'Grid' || type === 'Stack') && Array.isArray(comp.children)) {
-    const children = comp.children
-      .map((ch) => sanitizeInteractiveComponent(ch, userId, mcpHint))
-      .filter(Boolean) as A2UIComponent[];
-    // Card vacía sin título no aporta
-    if (children.length === 0 && !hasNonEmptyString(props.title)) return null;
-    return { ...comp, props, children };
-  }
-
-  // Componentes no interactivos: conservar si tienen contenido mínimo
-  if (type === 'Text' && !hasNonEmptyString(props.content) && !hasNonEmptyString(props.text)) {
-    return null;
-  }
-  if (type === 'AlertBanner' && !hasNonEmptyString(props.message)) return null;
-  if (type === 'HeaderBadge' && !hasNonEmptyString(props.title)) return null;
-  if (type === 'MetricGrid') {
-    if (!Array.isArray(props.items) || props.items.length === 0) return null;
-  }
-  if (type === 'MetricItem' && (!hasNonEmptyString(props.label) || props.value == null)) {
-    return null;
-  }
-  if (type === 'MetricComparison') {
-    if (!hasFiniteNumber(props.balance) || !hasFiniteNumber(props.currentCat)) return null;
-  }
-  if (type === 'ConfirmationCard') {
-    if (!hasNonEmptyString(props.operationId)) return null;
-  }
-  if (type === 'TransactionTable') {
-    if (!Array.isArray(props.transactions) || props.transactions.length === 0) return null;
-  }
-  if (type === 'FinancialHealthScore' && !hasFiniteNumber(props.score)) return null;
-
-  return { ...comp, props };
-}
-
-function sanitizeScreenComponents(
-  components: A2UIComponent[],
-  userId: string,
-  mcpHint?: Record<string, unknown>
-): A2UIComponent[] {
-  const cleaned = components
-    .map((c) => sanitizeInteractiveComponent(c, userId, mcpHint))
-    .filter(Boolean) as A2UIComponent[];
-
-  // Asegurar al menos un control accionable si hay deuda simulada
-  const hasInteractive = cleaned.some((c) =>
-    ['ActionButton', 'OptionPills', 'ActionList', 'PlanOptionList'].includes(c.type)
-  );
-  if (!hasInteractive && mcpHint?.simulate_debt_restructure) {
-    const sim = mcpHint.simulate_debt_restructure as any;
-    if (sim?.options?.length) {
-      cleaned.push({
-        id: 'sanitized_plan_pills',
-        type: 'OptionPills',
-        props: {
-          label: 'Elige un plazo para aplicar',
-          options: sim.options.map((o: any) => ({
-            id: o.planId,
-            label: `${o.months} meses · $${o.monthlyPayment}/mes`,
-            actionType: 'APPLY_RESTRUCTURE',
-            payload: { planId: o.planId },
-            selected: !!o.recommended
-          }))
-        }
-      });
-    }
-  }
-
-  return cleaned;
-}
-
-/**
- * Normaliza A2UI e hidrata props faltantes vía MCP.
- */
-export function normalizeA2UIScreen(
-  raw: any,
-  userId = DEFAULT_USER,
-  mcpHint?: Record<string, unknown>
-): A2UIScreen {
-  const s = raw.a2ui_screen || raw;
-  const screenId = s.screenId || s.screenType || s.id || 'dynamic_screen';
-  const assistantMessage =
-    s.assistantMessage ||
-    s.message ||
-    'Analicé tu solicitud y diseñé esta interfaz personalizada para resolverla:';
-
-  const rawComps: any[] = s.components || [];
-
-  const hydrateComponent = (c: any, index: number): A2UIComponent => {
-    const type = c.type || c.component || 'HeaderBadge';
-    const id = c.id || `comp_${type}_${index}`;
-    const props = { ...(c.props || {}) };
-
-    Object.keys(c).forEach((k) => {
-      if (k !== 'id' && k !== 'type' && k !== 'component' && k !== 'props' && k !== 'children') {
-        props[k] = c[k];
-      }
-    });
-
-    if (type === 'InvestmentSimulator' && (!props.options || props.options.length === 0)) {
-      const amt = props.amount || 25000;
-      const days = props.days || props.initialDays || 91;
-      const inv = callMcpTool('simulate_investment_portfolio', { amount: amt, days }) as any;
-      props.options = inv.options;
-      props.amount = amt;
-      props.initialDays = days;
-    }
-
-    if (type === 'TransactionTable' && (!props.transactions || props.transactions.length === 0)) {
-      const txData = callMcpTool('get_transaction_history', { userId }) as any;
-      props.transactions = txData.transactions;
-      props.totalExpenses = txData.totalExpenses;
-      props.topCategory = txData.topCategory[0];
-    }
-
-    if (type === 'FinancialHealthScore' && !props.score) {
-      const diag = callMcpTool('get_financial_health_diagnostic', { userId }) as any;
-      props.score = diag.creditScore;
-      props.scoreRange = diag.scoreRange;
-      props.dti = diag.dtiPercentage;
-      props.recommendations = diag.recommendations;
-    }
-
-    if (type === 'TransferCard') {
-      if (!props.recipient) props.recipient = 'Mamá (Rosa Mendoza)';
-      if (!props.amount) props.amount = 500;
-      if (!props.concept) props.concept = 'Apoyo familiar';
-      if (!props.sourceAccount) props.sourceAccount = 'Cuenta Débito Banorte (•••• 9921)';
-    }
-
-    if (type === 'PlanOptionList' && (!props.options || props.options.length === 0)) {
-      const userStatus = callMcpTool('get_client_financial_status', { userId }) as any;
-      const sim = callMcpTool('simulate_debt_restructure', {
-        debtAmount: userStatus.totalDebt
-      }) as any;
-      props.options = sim.options;
-      props.selectedPlanId = 'plan_18m';
-    }
-
-    const children = Array.isArray(c.children)
-      ? c.children.map((child: any, childIndex: number) => hydrateComponent(child, childIndex))
-      : undefined;
-
-    return { id, type, props, children };
-  };
-  const hydrated = rawComps.map(hydrateComponent);
-
-  const components = sanitizeScreenComponents(hydrated, userId, mcpHint);
-
-  const suggestedPrompts: string[] = Array.isArray(s.suggestedPrompts)
-    ? s.suggestedPrompts.filter((p: any) => hasNonEmptyString(p))
-    : ['Ver mis saldos', '¿En qué he gastado?', 'Simular una inversión'];
-
-  return {
-    type: 'a2ui_screen',
-    screenId,
-    assistantMessage,
-    components,
-    suggestedPrompts: suggestedPrompts.length >= 2 ? suggestedPrompts : [
-      'Ver mis saldos',
+function mcpFallbackFromContext(
+  mcpContext: Record<string, unknown>,
+  message: string,
+  intent: string,
+  mutationNote?: string
+): A2UIChatResponse | null {
+  return buildResponseFromMcpContext(mcpContext, {
+    intent,
+    message,
+    surfaceId: `surface_${intent || 'auto'}_${Date.now()}`,
+    assistantMessage: mutationNote
+      ? 'Listo. Aquí tienes el resultado con tus datos actualizados.'
+      : 'Aquí tienes la interfaz con tus datos del momento.',
+    suggestedPrompts: [
+      '¿Cuánto tengo disponible en débito?',
       '¿En qué he gastado?',
-      'Simular una inversión'
+      message.slice(0, 80) || 'Ver mis saldos'
     ]
-  };
+  });
 }
 
 function heuristicNlp(message: string, userId: string): NlpPlan {
@@ -558,6 +147,16 @@ function heuristicNlp(message: string, userId: string): NlpPlan {
     .normalize('NFD')
     .replace(/\p{M}/gu, '');
 
+  if (
+    /^(cambia|modifica|ajusta|actualiza|redisen|rediseñ|agrega|añade|anade|quita|elimina|oculta|muestra solo|haz |pon |mueve |reordena|mas grande|más grande|mas chico|más chico|dos columnas|una columna|sin tabla|con tabla|layout|interfaz|pantalla|boton|botón|tarjeta visual)/.test(
+      m
+    ) ||
+    /\b(agrega|añade|quita|elimina|cambia el|cambia la|haz el|haz la|más grande|mas grande)\b.*\b(boton|botón|tabla|tarjeta|titulo|título|columna|fila|progress|barra)\b/.test(
+      m
+    )
+  ) {
+    return { intent: 'ui_refine', tools: [] };
+  }
   if (/invert|pagare|cetes|rendimiento/.test(m)) {
     return {
       intent: 'investment',
@@ -567,7 +166,12 @@ function heuristicNlp(message: string, userId: string): NlpPlan {
       ]
     };
   }
-  if (/pagar (mi )?tarjeta|pago (de |a )?tdc|abonar (a )?(la )?tarjeta|pago minimo|pago mínimo|liquidar (la )?tarjeta/.test(m) && !/interes|reestructur/.test(m)) {
+  if (
+    /pagar (mi )?tarjeta|pago (de |a )?tdc|abonar (a )?(la )?tarjeta|pago minimo|pago mínimo|liquidar (la )?tarjeta/.test(
+      m
+    ) &&
+    !/interes|reestructur/.test(m)
+  ) {
     return {
       intent: 'card_payment',
       tools: [{ name: 'get_client_financial_status', args: { userId } }]
@@ -620,7 +224,7 @@ async function classifyIntentAndTools(
       ...(history || []).slice(-4).map((h) => ({ role: h.role, content: h.content })),
       {
         role: 'user',
-        content: `Clasifica esta intención y elige tools MCP.\nMensaje: "${message}"\nuserId: ${userId}`
+        content: `Clasifica esta intención y elige tools MCP (servidor Banorte).\nMensaje: "${message}"\nuserId: ${userId}`
       }
     ],
     8000,
@@ -649,152 +253,33 @@ async function classifyIntentAndTools(
   }
 }
 
-function runMcpTools(
+async function runMcpTools(
   tools: Array<{ name: string; args: Record<string, unknown> }>,
   userId: string
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const results: Record<string, unknown> = {};
-
   for (const tool of tools) {
     try {
       const args: Record<string, unknown> = { userId, ...tool.args };
       if (tool.name === 'simulate_debt_restructure' && args.debtAmount == null) {
-        const status = callMcpTool('get_client_financial_status', { userId }) as any;
+        const status = (await callMcpToolViaServer('get_client_financial_status', {
+          userId
+        })) as any;
         args.debtAmount = status.totalDebt;
       }
-      results[tool.name] = callMcpTool(tool.name, args);
+      results[tool.name] = await callMcpToolViaServer(tool.name, args);
     } catch (err: any) {
       results[tool.name] = { error: err.message };
     }
   }
-
   return results;
 }
 
-function buildErrorScreen(message: string, operationMayHaveRun = false): A2UIScreen {
-  return {
-    type: 'a2ui_screen',
-    screenId: 'agent_generation_error',
-    assistantMessage:
-      operationMayHaveRun ? 'No pude mostrar el resultado. Revisa tus saldos y movimientos antes de repetir la operación.' : 'Maya no está disponible por el momento. Tus saldos siguen a la vista.',
-    components: [
-      {
-        id: 'comp_err_badge',
-        type: 'HeaderBadge',
-        props: {
-          tag: 'NO DISPONIBLE',
-          title: 'No pudimos preparar tu respuesta'
-        }
-      },
-      {
-        id: 'comp_err_alert',
-        type: 'AlertBanner',
-        props: {
-          variant: 'warning',
-          message:
-            operationMayHaveRun ? 'La operación pudo haberse registrado. No vuelvas a confirmarla hasta revisar tus movimientos.' : 'Tu consulta se conserva en la conversación. Puedes volver a intentarlo más tarde.'
-        }
-      },
-      {
-        id: 'comp_err_action',
-        type: 'ActionButton',
-        props: {
-          label: operationMayHaveRun ? 'Consultar mis movimientos' : 'Volver a consultar',
-          actionType: 'USER_PROMPT',
-          payload: { text: operationMayHaveRun ? 'Quiero consultar mis últimos movimientos' : message }
-        }
-      }
-    ],
-    suggestedPrompts: [
-      'Quiero pagar menos intereses de mi tarjeta',
-      '¿Cuánto tengo disponible en débito?',
-      'Transferir $500 a mi mamá'
-    ]
-  };
-}
-
-/** Pantalla válida = >=4 componentes tipados + controles interactivos sanos. */
-function isCompleteA2UIScreen(screen: A2UIScreen | null | undefined): screen is A2UIScreen {
-  if (!screen || screen.type !== 'a2ui_screen') return false;
-  if (!Array.isArray(screen.components) || screen.components.length < 4) return false;
-  if (!screen.assistantMessage?.trim()) return false;
-  const withType = screen.components.filter(
-    (c) => c && typeof c.type === 'string' && c.type.length > 0
-  );
-  if (withType.length < 4) return false;
-
-  const VISUAL = new Set([
-    'DonutChart',
-    'BarChart',
-    'ProgressBar',
-    'StatTile',
-    'SectionHeader',
-    'Icon'
-  ]);
-
-  const hasVisualDeep = (nodes: A2UIComponent[]): boolean =>
-    nodes.some(
-      (c) =>
-        VISUAL.has(c.type) ||
-        (Array.isArray(c.children) && c.children.length > 0 && hasVisualDeep(c.children))
-    );
-
-  if (!hasVisualDeep(withType)) return false;
-
-  for (const c of screen.components) {
-    if (c.type === 'ActionButton') {
-      if (!hasNonEmptyString(c.props?.label) || !hasNonEmptyString(c.props?.actionType)) return false;
-      if (!KNOWN_ACTION_TYPES.has(String(c.props.actionType))) return false;
-      const planFromPayload =
-        c.props?.payload && typeof c.props.payload === 'object'
-          ? (c.props.payload as any).planId
-          : undefined;
-      if (
-        c.props.actionType === 'APPLY_RESTRUCTURE' &&
-        !hasNonEmptyString(c.props.planId) &&
-        !hasNonEmptyString(planFromPayload)
-      ) {
-        return false;
-      }
-    }
-    if (c.type === 'OptionPills') {
-      const opts = c.props?.options;
-      if (!Array.isArray(opts) || opts.length === 0) return false;
-      if (
-        opts.some(
-          (o: any) =>
-            !hasNonEmptyString(o?.label) ||
-            !hasNonEmptyString(o?.actionType) ||
-            !KNOWN_ACTION_TYPES.has(String(o.actionType))
-        )
-      ) {
-        return false;
-      }
-    }
-    if (c.type === 'ActionList') {
-      const acts = c.props?.actions;
-      if (!Array.isArray(acts) || acts.length === 0) return false;
-      if (acts.some((a: any) => !hasNonEmptyString(a?.label) || !hasNonEmptyString(a?.actionType))) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-/**
- * Verifica y normaliza la pantalla generada contra el catálogo disponible.
- */
-function tryParseA2UI(
-  raw: string,
-  userId: string,
-  mcpHint?: Record<string, unknown>
-): A2UIScreen | null {
+function tryParseA2UI(raw: string): A2UIChatResponse | null {
   try {
     const parsed = JSON.parse(cleanJsonString(raw));
-    const screen = normalizeA2UIScreen(parsed, userId, mcpHint);
-    return isCompleteA2UIScreen(screen) ? screen : null;
+    const response = normalizeA2UIResponse(parsed);
+    return isCompleteA2UIResponse(response) ? response : null;
   } catch {
     return null;
   }
@@ -806,11 +291,23 @@ async function generateA2UIScreen(
   mcpContext: Record<string, unknown>,
   history: HistoryItem[] | undefined,
   userId: string,
-  mutationNote?: string
-): Promise<A2UIScreen> {
+  mutationNote?: string,
+  previousSurface?: A2UIChatResponse | null
+): Promise<A2UIChatResponse> {
   const a2uiTemperature = Number(process.env.A2UI_TEMPERATURE || '0.5');
   const model = A2UI_MODEL();
   const maxAttempts = 3;
+  const prev =
+    previousSurface && previousSurface.type === 'a2ui_v09'
+      ? previousSurface
+      : null;
+  const prevSnippet = prev
+    ? JSON.stringify({
+        surfaceId: prev.surfaceId,
+        assistantMessage: prev.assistantMessage,
+        messages: prev.messages
+      }).slice(0, 14000)
+    : '';
 
   const basePrompt = `
 INTENCIÓN NLP (pista): ${intent}
@@ -818,16 +315,24 @@ ${mutationNote ? `RESULTADO DE MUTACIÓN MCP:\n${mutationNote}\n` : ''}
 DATOS MCP EN TIEMPO REAL:
 ${JSON.stringify(mcpContext, null, 2)}
 
-MENSAJE DEL USUARIO:
+${
+  prev
+    ? `SUPERFICIE ACTUAL DEL LIENZO (edítala según el mensaje del usuario; conserva surfaceId "${prev.surfaceId}" salvo que pidan reiniciar):
+${prevSnippet}
+
+MODO: refinamiento iterativo. Aplica el pedido del usuario sobre esta superficie. No regeneres algo ajeno si solo pidieron un cambio visual/estructural.`
+    : `No hay superficie previa: diseña una pantalla nueva completa.`
+}
+
+MENSAJE DEL USUARIO (prompt de UI / banca):
 "${message}"
 
-OBLIGATORIO ANTES DE RESPONDER:
-1) Genera JSON a2ui_screen completo.
-2) components.length >= 4 (verifica antes de enviar).
-3) CALIDAD VISUAL: incluye SectionHeader + >=2 StatTile (con icon) + >=1 gráfica (DonutChart|BarChart|ProgressBar). Copia props de get_ui_kit.charts o defaultBlocks.
-4) VERIFICA CADA botón/pill/lista: label + actionType conocido + payload (planId/amount/text). Si un control no tiene acción real, NO lo incluyas.
-5) Prioriza SectionHeader/StatTile/DonutChart/BarChart/ProgressBar/Icon. Evita la terna MetricComparison+PlanOptionList.
-6) Datos solo del MCP anterior.
+OBLIGATORIO:
+1) Genera JSON type "a2ui_v09" con messages[] (createSurface + updateDataModel + updateComponents).
+2) Lista plana de components con id "root".
+3) Text/Button: text string o path a string/número — NUNCA path a objetos (evita [object Object]).
+4) Button con action.event.name reales. Sin Banorte*. Sin style objects. Sin get_ui_kit.
+5) Datos solo del MCP o del dataModel de la superficie actual.
 userId: ${userId}
 `;
 
@@ -835,7 +340,7 @@ userId: ${userId}
     const reinforce =
       attempt === 1
         ? ''
-        : `\n\nREINTENTO ${attempt}/${maxAttempts}: UI incompleta o sin gráficas/íconos, o botones muertos. DEBES devolver JSON con components.length >= 4, SectionHeader+StatTile+gráfica, y controles con actionType/payload. Usa get_ui_kit. Sin markdown.`;
+        : `\n\nREINTENTO ${attempt}/${maxAttempts}: UI incompleta o con textos vacíos/"Detalle". Devuelve a2ui_v09 con root, Card+Text con cifras literales del MCP, DataTable|ProgressIndicator y Button con text + action.event.name. Props en el mismo nivel del nodo (sin props anidados). Sin Banorte*. Sin markdown.`;
 
     const fullPrompt = basePrompt + reinforce;
     const messages = [
@@ -881,26 +386,26 @@ userId: ${userId}
       continue;
     }
 
-    let screen = tryParseA2UI(raw, userId, mcpContext);
+    let screen = tryParseA2UI(raw);
     if (screen) {
       console.log(
-        `[A2UI] OK en intento ${attempt}: ${screen.screenId} (${screen.components.length} comps, interactivos verificados)`
+        `[A2UI] OK en intento ${attempt}: ${screen.surfaceId} (${screen.messages.length} msgs)`
       );
       return screen;
     }
 
-    console.warn(`[A2UI] Intento ${attempt}: incompleto o botones inválidos → self-heal`);
+    console.warn(`[A2UI] Intento ${attempt}: incompleto → self-heal`);
     const healRaw = await callOllamaRaw(
       model,
       [
         {
           role: 'system',
           content:
-            'Validador A2UI. Devuelve SOLO JSON a2ui_screen con components.length >= 4, SectionHeader, StatTiles con icon, y al menos una gráfica (DonutChart|BarChart|ProgressBar) usando get_ui_kit. Controles con actionType/payload válidos. Sin markdown.'
+            'Validador A2UI v0.9. Devuelve SOLO JSON a2ui_v09 con createSurface+updateDataModel+updateComponents, root Column, Card/Text, DataTable|ProgressIndicator y Button con action.event.name. Catálogo estándar a2ui-shadcn únicamente. Sin markdown.'
         },
         {
           role: 'user',
-          content: `Completa/repara hasta que sea renderizable y todos los botones funcionen:\n${raw}\n\nContexto MCP:\n${JSON.stringify(mcpContext).slice(0, 4000)}`
+          content: `Completa/repara hasta que sea renderizable:\n${raw}\n\nContexto MCP:\n${JSON.stringify(mcpContext).slice(0, 4000)}`
         }
       ],
       15000,
@@ -908,16 +413,26 @@ userId: ${userId}
     );
 
     if (healRaw) {
-      screen = tryParseA2UI(healRaw, userId, mcpContext);
+      screen = tryParseA2UI(healRaw);
       if (screen) {
-        console.log(`[A2UI] OK tras self-heal intento ${attempt}: ${screen.screenId}`);
+        console.log(`[A2UI] OK tras self-heal intento ${attempt}: ${screen.surfaceId}`);
         return screen;
       }
     }
   }
 
-  console.warn('[A2UI] Todos los intentos fallaron → error mínimo, sin pantalla bancaria prefabricada');
-  return buildErrorScreen(message, ['APPLY_RESTRUCTURE', 'CONFIRM_INVESTMENT', 'CONFIRM_TRANSFER', 'PAY_CARD'].includes(intent));
+  console.warn('[A2UI] Todos los intentos fallaron → superficie desde datos MCP');
+  const fromMcp = mcpFallbackFromContext(mcpContext, message, intent, mutationNote);
+  if (fromMcp) {
+    console.log(`[A2UI] OK vía datos MCP: ${fromMcp.surfaceId}`);
+    return fromMcp;
+  }
+
+  console.warn('[A2UI] Sin datos MCP útiles → error mínimo');
+  return buildErrorResponse(
+    message,
+    ['APPLY_RESTRUCTURE', 'CONFIRM_INVESTMENT', 'CONFIRM_TRANSFER', 'PAY_CARD'].includes(intent)
+  );
 }
 
 async function handleMutationAction(
@@ -925,7 +440,7 @@ async function handleMutationAction(
   context: any,
   history: HistoryItem[] | undefined,
   userId: string
-): Promise<A2UIScreen> {
+): Promise<A2UIChatResponse> {
   const action = context.action as string;
   let mutationNote = '';
   const mcpContext: Record<string, unknown> = {};
@@ -933,16 +448,16 @@ async function handleMutationAction(
   try {
     if (action === 'APPLY_RESTRUCTURE') {
       const planId = context.planId || 'plan_18m';
-      const status = callMcpTool('get_client_financial_status', { userId }) as any;
-      const sim = callMcpTool('simulate_debt_restructure', {
+      const status = (await callMcpToolViaServer('get_client_financial_status', { userId })) as any;
+      const sim = (await callMcpToolViaServer('simulate_debt_restructure', {
         debtAmount: status.totalDebt
-      }) as any;
+      })) as any;
       const plan =
         sim.options.find((o: any) => o.planId === planId) ||
         sim.options.find((o: any) => o.recommended) ||
         sim.options[1];
 
-      const opResult = callMcpTool('apply_debt_restructuring', {
+      const opResult = await callMcpToolViaServer('apply_debt_restructuring', {
         userId,
         cardId: status.cards?.[0]?.id || DEFAULT_CARD,
         planId: plan.planId,
@@ -950,109 +465,125 @@ async function handleMutationAction(
         monthlyQuota: plan.monthlyPayment
       });
 
-      mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-        userId
-      });
+      mcpContext.get_client_financial_status = await callMcpToolViaServer(
+        'get_client_financial_status',
+        { userId }
+      );
       mcpContext.apply_debt_restructuring = opResult;
       mcpContext.simulate_debt_restructure = sim;
-      mutationNote = `Reestructura aplicada con éxito: ${JSON.stringify(opResult)}. Genera ConfirmationCard con el folio, plazo y pago mensual. Describe el resultado con claridad.`;
+      mutationNote = `Reestructura aplicada: ${JSON.stringify(opResult)}. Genera Card+Text de comprobante con folio/plazo/pago y Button USER_PROMPT para continuar. Datos en /confirmation.`;
     } else if (action === 'CONFIRM_INVESTMENT') {
       const amount = Number(context.amount) || 25000;
       const days = Number(context.days) || 91;
-      const invResult = callMcpTool('apply_investment', {
+      const invResult = await callMcpToolViaServer('apply_investment', {
         userId,
         amount,
         days,
         productId: context.productId || 'inv_pagare_banorte'
       });
-      mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-        userId
-      });
+      mcpContext.get_client_financial_status = await callMcpToolViaServer(
+        'get_client_financial_status',
+        { userId }
+      );
       mcpContext.apply_investment = invResult;
-      mutationNote = `Inversión aplicada: ${JSON.stringify(invResult)}. Genera ConfirmationCard con folio INV.`;
+      mutationNote = `Inversión aplicada: ${JSON.stringify(invResult)}. Genera comprobante con Card+Text y folio INV.`;
     } else if (action === 'CONFIRM_TRANSFER') {
       const recipient = context.recipient || 'Mamá (Rosa Mendoza)';
       const amount = Number(context.amount) || 500;
       const concept = context.concept || 'Apoyo familiar';
-      const transferResult = callMcpTool('execute_transfer', {
+      const transferResult = await callMcpToolViaServer('execute_transfer', {
         userId,
         recipientName: recipient,
         amount,
         concept
       });
-      mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-        userId
-      });
+      mcpContext.get_client_financial_status = await callMcpToolViaServer(
+        'get_client_financial_status',
+        { userId }
+      );
       mcpContext.execute_transfer = transferResult;
-      mutationNote = `SPEI ejecutado: ${JSON.stringify(transferResult)}. Genera ConfirmationCard con tracking SPEI.`;
+      mutationNote = `SPEI ejecutado: ${JSON.stringify(transferResult)}. Genera comprobante Card+Text con tracking SPEI.`;
     } else if (action === 'PAY_CARD') {
-      const status = callMcpTool('get_client_financial_status', { userId }) as any;
+      const status = (await callMcpToolViaServer('get_client_financial_status', { userId })) as any;
       const card = status.cards?.[0];
       const amount =
         Number(context.amount) ||
         Number(context.payload?.amount) ||
         Number(card?.minimumPayment) ||
         980;
-      const payResult = callMcpTool('pay_credit_card', {
+      const payResult = await callMcpToolViaServer('pay_credit_card', {
         userId,
         amount,
         cardId: context.cardId || card?.id || DEFAULT_CARD
       });
-      mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-        userId
-      });
+      mcpContext.get_client_financial_status = await callMcpToolViaServer(
+        'get_client_financial_status',
+        { userId }
+      );
       mcpContext.pay_credit_card = payResult;
-      mutationNote = `Pago a TDC aplicado: ${JSON.stringify(payResult)}. Muestra ConfirmationCard con saldo restante de tarjeta y cheques.`;
+      mutationNote = `Pago a TDC aplicado: ${JSON.stringify(payResult)}. Muestra comprobante Card+Text.`;
     } else {
       mutationNote = `Acción UI: ${action}. Payload: ${JSON.stringify(context)}`;
-      mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-        userId
-      });
+      mcpContext.get_client_financial_status = await callMcpToolViaServer(
+        'get_client_financial_status',
+        { userId }
+      );
     }
   } catch (err: any) {
     mcpContext.mutation_error = err.message;
-    mutationNote = `La operación falló: ${err.message}. Muestra AlertBanner warning y permite reintentar.`;
+    mutationNote = `La operación falló: ${err.message}. Muestra Text de aviso y Button para reintentar.`;
   }
 
-  mcpContext.get_ui_kit = callMcpTool('get_ui_kit', {
-    userId,
-    focus: action === 'PAY_CARD' ? 'card_payment' : 'auto'
-  });
-
-  const screen = await generateA2UIScreen(
+  // El LLM arma/refina el comprobante con el resultado MCP (sin plantillas UI kit).
+  return generateA2UIScreen(
     message || `Acción: ${action}`,
     action,
     mcpContext,
     history,
     userId,
-    mutationNote
+    mutationNote,
+    context?.currentSurface || null
   );
-
-  return screen;
 }
 
 /**
- * Pipeline: NLP → MCP → A2UI_MODEL (sin plantillas de negocio).
+ * Pipeline: NLP → MCP → A2UI iterativo (prompt sobre la UI y se modifica el lienzo).
+ * Mutaciones sin LLM se rechazan. Consultas sin LLM usan superficie desde datos MCP.
  */
 export async function processUserMessage(
   message: string,
   context?: any,
   history?: HistoryItem[]
-): Promise<A2UIScreen> {
+): Promise<A2UIChatResponse> {
   const userId = context?.userId || DEFAULT_USER;
-
-  // A missing model connection must not masquerade as a generated banking screen.
-  if (!ollamaConfigured()) return buildErrorScreen(message);
+  const hasLlm = ollamaConfigured();
+  const previousSurface =
+    context?.currentSurface && context.currentSurface.type === 'a2ui_v09'
+      ? (context.currentSurface as A2UIChatResponse)
+      : null;
 
   if (context?.action) {
+    if (!hasLlm) return buildErrorResponse(message);
     return handleMutationAction(message, context, history, userId);
   }
 
-  const plan = await classifyIntentAndTools(message, history, userId);
-  console.log(`[NLP] intent=${plan.intent} tools=${plan.tools.map((t) => t.name).join(',')}`);
+  const plan = hasLlm
+    ? await classifyIntentAndTools(message, history, userId)
+    : heuristicNlp(message, userId);
+
+  // Refinar UI sin tools si hay lienzo actual.
+  if (plan.intent === 'ui_refine' && previousSurface) {
+    plan.tools = [];
+  }
+
+  console.log(
+    `[NLP] intent=${plan.intent} tools=${plan.tools.map((t) => t.name).join(',') || '—'} llm=${hasLlm} refine=${Boolean(previousSurface && plan.intent === 'ui_refine')}`
+  );
 
   if (plan.tools.some((t) => t.name === 'simulate_debt_restructure')) {
-    const status = callMcpTool('get_client_financial_status', { userId }) as any;
+    const status = (await callMcpToolViaServer('get_client_financial_status', {
+      userId
+    })) as any;
     plan.tools = plan.tools.map((t) =>
       t.name === 'simulate_debt_restructure'
         ? { ...t, args: { ...t.args, debtAmount: status.totalDebt } }
@@ -1060,20 +591,38 @@ export async function processUserMessage(
     );
   }
 
-  const mcpContext = runMcpTools(plan.tools, userId);
+  const mcpContext =
+    plan.tools.length > 0 ? await runMcpTools(plan.tools, userId) : {};
 
-  if (!mcpContext.get_client_financial_status) {
-    mcpContext.get_client_financial_status = callMcpTool('get_client_financial_status', {
-      userId
-    });
+  // Para refinamientos, reinyecta dataModel previo como contexto blando.
+  if (previousSurface && plan.intent === 'ui_refine') {
+    const dmMsg = previousSurface.messages.find((m) => 'updateDataModel' in m) as
+      | { updateDataModel: { value?: unknown } }
+      | undefined;
+    if (dmMsg?.updateDataModel?.value) {
+      mcpContext.previous_data_model = dmMsg.updateDataModel.value;
+    }
   }
 
-  // Siempre enriquecer con UI Kit (gráficas, íconos, bloques default)
-  mcpContext.get_ui_kit = callMcpTool('get_ui_kit', {
-    userId,
-    focus: plan.intent || 'auto'
-  });
+  if (!hasLlm) {
+    if (previousSurface && plan.intent === 'ui_refine') {
+      return previousSurface;
+    }
+    const fromMcp = mcpFallbackFromContext(mcpContext, message, plan.intent);
+    if (fromMcp) {
+      console.log(`[A2UI] Sin LLM → superficie desde datos MCP (${fromMcp.surfaceId})`);
+      return fromMcp;
+    }
+    return buildErrorResponse(message);
+  }
 
-  // Si falla la generación, devuelve un estado de error sin inventar una pantalla de negocio.
-  return generateA2UIScreen(message, plan.intent, mcpContext, history, userId);
+  return generateA2UIScreen(
+    message,
+    plan.intent,
+    mcpContext,
+    history,
+    userId,
+    undefined,
+    previousSurface
+  );
 }

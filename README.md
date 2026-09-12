@@ -13,6 +13,7 @@ No es una app oficial de Banorte. Usa datos sintéticos; no mueve dinero real.
 - Resumen de cuenta conectado a `/api/user/:id/status`. Si falla la consulta, se muestra error; no se inventa un saldo.
 - Seis tareas cotidianas: saldo, pago de tarjeta, transferencia, gastos, inversión y menos intereses.
 - Maya en un panel de conversación. La interfaz generada aparece en el lienzo principal, no como un muro de texto.
+- Lienzo con **A2UI v0.9** renderizado por [`a2ui-shadcn`](https://www.npmjs.com/package/a2ui-shadcn). El agente diseña y **refina** la UI por prompt (sin `get_ui_kit`).
 - Revisión con diálogo nativo antes de pagar, transferir, invertir o reestructurar. Cancelar conserva los datos.
 - Identidad Inter local y rojo `#EB0029` verificados contra el portal Personal de Banorte. Detalle en [docs/UI_HANDOFF.md](docs/UI_HANDOFF.md).
 
@@ -20,9 +21,9 @@ No es una app oficial de Banorte. Usa datos sintéticos; no mueve dinero real.
 
 ## Los tres pilares del reto
 
-1. **LLM al centro:** Ollama Cloud (`gemma4:31b`) clasifica la intención y genera el JSON A2UI. Gemini es fallback opcional. Si no hay clave o se agotan los reintentos, se muestra un error claro; no se fabrica una pantalla bancaria ajena a la consulta.
-2. **MCP en TypeScript:** Un registry (`callMcpTool`) expone herramientas del core: saldos, movimientos, reestructura, inversión, pago de tarjeta y SPEI. El chat HTTP y el servidor MCP stdio comparten el mismo contrato.
-3. **A2UI:** La UI viaja como especificación JSON hacia React. Cada interacción vuelve al modelo como contexto y cierra el ciclo.
+1. **LLM al centro:** Ollama Cloud — NLP con `gpt-oss:120b` y generación A2UI v0.9 con `gemma4:31b` (`createSurface` / `updateDataModel` / `updateComponents`, catálogo estándar). Gemini es fallback opcional. Si no hay clave o se agotan los reintentos, se muestra un error claro; no se fabrica una pantalla bancaria ajena a la consulta.
+2. **MCP en TypeScript:** El orquestador habla con el servidor Banorte vía cliente MCP (`CallTool` in-memory; también stdio). Tools bancarias: saldos, movimientos, reestructura, inversión, pago de tarjeta y SPEI.
+3. **A2UI v0.9 + shadcn:** La UI viaja como mensajes declarativos hacia `A2UISurface`. Cada prompt puede crear o **modificar** el lienzo actual (`context.currentSurface`).
 
 ---
 

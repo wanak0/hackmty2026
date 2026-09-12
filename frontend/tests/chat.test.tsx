@@ -1,26 +1,59 @@
 // @vitest-environment jsdom
-import React from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChatContainer } from "../src/components/chat/ChatContainer";
+
 const bankStatus = {
   user: { name: "Carlos Mendoza", checkingBalance: 14500 },
   totalDebt: 18400,
   cards: [],
 };
+
 const paymentScreen = {
-  type: "a2ui_screen",
-  screenId: "payment",
+  type: "a2ui_v09",
+  surfaceId: "payment",
   assistantMessage: "Revisa tu pago.",
-  components: [
+  messages: [
     {
-      id: "pay",
-      type: "ActionButton",
-      props: { actionType: "PAY_CARD", label: "Pagar 100 pesos", amount: 100 },
+      version: "v0.9",
+      createSurface: {
+        surfaceId: "payment",
+        catalogId: "a2ui-shadcn",
+        sendDataModel: true,
+      },
+    },
+    {
+      version: "v0.9",
+      updateDataModel: {
+        surfaceId: "payment",
+        path: "/",
+        value: {},
+      },
+    },
+    {
+      version: "v0.9",
+      updateComponents: {
+        surfaceId: "payment",
+        components: [
+          { id: "root", component: "Column", children: ["pay"] },
+          {
+            id: "pay",
+            component: "Button",
+            text: "Pagar 100 pesos",
+            action: {
+              event: {
+                name: "PAY_CARD",
+                context: { amount: 100 },
+              },
+            },
+          },
+        ],
+      },
     },
   ],
 };
+
 beforeEach(() => {
   localStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
@@ -36,6 +69,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+async function openMayaChat() {
+  await userEvent.click(
+    screen.getByRole("button", { name: /Abrir asistente Maya Banorte/i }),
+  );
+  expect(
+    screen.getByRole("dialog", { name: /Maya/i }),
+  ).toBeTruthy();
+}
+
 it("reviews a payment, supports cancellation, and sends only one confirmed action", async () => {
   const chatRequests: Record<string, any>[] = [];
   vi.stubGlobal(
@@ -49,6 +91,7 @@ it("reviews a payment, supports cancellation, and sends only one confirmed actio
     }),
   );
   render(<ChatContainer onBackToLanding={vi.fn()} />);
+  await openMayaChat();
   await userEvent.click(
     screen.getByRole("button", {
       name: /Pagar mi tarjeta/,
@@ -93,6 +136,7 @@ it("does not automatically replay failed chat requests", async () => {
     }),
   );
   render(<ChatContainer onBackToLanding={vi.fn()} />);
+  await openMayaChat();
   await userEvent.click(
     screen.getByRole("button", {
       name: /Ver mi saldo/,
@@ -101,4 +145,18 @@ it("does not automatically replay failed chat requests", async () => {
   await screen.findByRole("alert");
   expect(requests).toBe(1);
   expect(screen.getByText(/No pudimos obtener una respuesta/)).toBeTruthy();
+});
+
+it("opens Maya as a bubble modal with task shortcuts", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, json: async () => bankStatus })),
+  );
+  render(<ChatContainer onBackToLanding={vi.fn()} />);
+  expect(screen.queryByRole("heading", { name: /Qué necesitas hacer/i })).toBeNull();
+  await openMayaChat();
+  expect(
+    screen.getByRole("heading", { name: /Qué necesitas hacer/i }),
+  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Transferir dinero/i })).toBeTruthy();
 });
