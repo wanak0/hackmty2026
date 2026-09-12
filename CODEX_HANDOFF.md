@@ -122,7 +122,7 @@ El registry MCP (`callMcpTool`) es el **mismo contrato** usado por el orquestado
 7. `execute_transfer(...)`: Descuenta el saldo de débito, registra el movimiento y emite comprobante `SPEI-BNTE-XXXXXX`.
 8. `get_financial_health_diagnostic(userId)`: Calcula el Debt-to-Income (DTI), score (685 pts) y recomendaciones.
 
-**Resiliencia:** si Ollama/Gemini no responden, `deterministic.ts` clasifica la intención y arma pantallas A2UI consultando las mismas tools MCP.
+**Resiliencia:** si Ollama/Gemini no responden, se muestra una pantalla de error A2UI mínima (reintentar) — ya no hay plantillas de negocio.
 
 ---
 

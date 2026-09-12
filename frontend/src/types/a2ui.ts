@@ -4,6 +4,7 @@ export type A2UIComponentType =
   | 'Grid'
   | 'Stack'
   | 'Section'
+  | 'SectionHeader'
   | 'Divider'
   // Primitivas de Contenido y Datos
   | 'HeaderBadge'
@@ -11,6 +12,11 @@ export type A2UIComponentType =
   | 'AlertBanner'
   | 'MetricItem'
   | 'MetricGrid'
+  | 'Icon'
+  | 'StatTile'
+  | 'ProgressBar'
+  | 'BarChart'
+  | 'DonutChart'
   // Primitivas de Controles Interactivos
   | 'ActionButton'
   | 'SliderInput'

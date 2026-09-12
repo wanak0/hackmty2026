@@ -11,8 +11,13 @@ import { TransactionTable } from './TransactionTable';
 import { TransferCard } from './TransferCard';
 import { FinancialHealthScore } from './FinancialHealthScore';
 import { AlertBanner } from './AlertBanner';
+import { Icon } from './Icon';
+import { StatTile } from './StatTile';
+import { ProgressBar } from './ProgressBar';
+import { BarChart } from './BarChart';
+import { DonutChart } from './DonutChart';
+import { SectionHeader } from './SectionHeader';
 import {
-  Sparkles,
   ChevronRight,
   Sliders,
   TrendingUp,
@@ -78,12 +83,12 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
 
       case 'Stack': {
         const isRow = comp.props.direction === 'horizontal';
+        const gapClass =
+          comp.props.gap === 'sm' ? 'gap-2' : comp.props.gap === 'lg' ? 'gap-5' : 'gap-3';
         return (
           <div
             key={comp.id}
-            className={`flex ${isRow ? 'flex-row flex-wrap items-center' : 'flex-col'} gap-${
-              comp.props.gap || '3'
-            }`}
+            className={`flex ${isRow ? 'flex-row flex-wrap items-center' : 'flex-col'} ${gapClass}`}
           >
             {comp.children ? comp.children.map((child) => renderComponent(child)) : null}
           </div>
@@ -92,6 +97,76 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
 
       case 'Divider':
         return <hr key={comp.id} className="border-gray-200 my-3" />;
+
+      case 'Icon':
+        return (
+          <Icon
+            key={comp.id}
+            name={comp.props.name}
+            tone={comp.props.tone}
+            size={comp.props.size}
+          />
+        );
+
+      case 'SectionHeader':
+        return (
+          <SectionHeader
+            key={comp.id}
+            icon={comp.props.icon}
+            title={comp.props.title}
+            subtitle={comp.props.subtitle}
+            tag={comp.props.tag}
+          />
+        );
+
+      case 'StatTile':
+        return (
+          <StatTile
+            key={comp.id}
+            icon={comp.props.icon}
+            label={comp.props.label}
+            value={comp.props.value}
+            subtext={comp.props.subtext}
+            tone={comp.props.tone}
+            trend={comp.props.trend}
+          />
+        );
+
+      case 'ProgressBar':
+        return (
+          <ProgressBar
+            key={comp.id}
+            label={comp.props.label}
+            value={Number(comp.props.value) || 0}
+            max={comp.props.max}
+            unit={comp.props.unit}
+            tone={comp.props.tone}
+            icon={comp.props.icon}
+            subtext={comp.props.subtext}
+          />
+        );
+
+      case 'BarChart':
+        return (
+          <BarChart
+            key={comp.id}
+            title={comp.props.title}
+            unit={comp.props.unit}
+            orientation={comp.props.orientation}
+            bars={comp.props.bars || []}
+          />
+        );
+
+      case 'DonutChart':
+        return (
+          <DonutChart
+            key={comp.id}
+            title={comp.props.title}
+            centerLabel={comp.props.centerLabel}
+            centerValue={comp.props.centerValue}
+            segments={comp.props.segments || []}
+          />
+        );
 
       // 2. CONTENIDO Y MÉTRICAS ATÓMICAS
       case 'Text': {
@@ -345,7 +420,8 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
             loading={loading}
             onClick={() =>
               onAction(comp.props.actionType, {
-                planId: selectedPlanId,
+                planId: comp.props.planId || selectedPlanId,
+                ...(comp.props.payload || {}),
                 ...comp.props,
                 ...(comp.props.actionType === 'CONFIRM_TRANSFER' && liveTransferData
                   ? liveTransferData
@@ -415,46 +491,8 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-7 shadow-sm transition-all duration-300">
-      {/* Mensaje de texto contextual del Asistente Maya */}
-      {screen.assistantMessage && (
-        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-[#FFF8F9] border-l-4 border-[#EB0029] border-y border-r border-[#FECDD3] text-sm text-gray-800 leading-relaxed shadow-xs flex items-start gap-3.5">
-          <div className="w-8 h-8 rounded-xl bg-[#FFF0F2] border border-[#FECDD3] flex items-center justify-center text-[#EB0029] shrink-0 mt-0.5">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-[11px] font-extrabold text-[#EB0029] uppercase tracking-wider block mb-0.5">
-              Maya Banorte
-            </span>
-            <p className="text-gray-800 text-sm leading-relaxed font-medium">
-              {screen.assistantMessage}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Renderizado dinámico de componentes por tipo (Protocolo A2UI) */}
+      {/* Lienzo A2UI puro: solo componentes generados (el texto de Maya vive en el chat) */}
       <div className="space-y-4">{screen.components.map((comp) => renderComponent(comp))}</div>
-
-      {/* Sugerencias contextuales dinámicas de la pantalla */}
-      {screen.suggestedPrompts && screen.suggestedPrompts.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-100">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
-            Sugerencias recomendadas:
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {screen.suggestedPrompts.map((prompt, pIdx) => (
-              <button
-                key={pIdx}
-                onClick={() => onAction('USER_PROMPT', { text: prompt })}
-                className="px-3 py-1.5 rounded-full bg-gray-50 hover:bg-[#FFF0F2] hover:text-[#EB0029] border border-gray-200 hover:border-[#FECDD3] text-xs font-semibold text-gray-700 transition-all flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3 h-3 text-[#EB0029]" />
-                <span>{prompt}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

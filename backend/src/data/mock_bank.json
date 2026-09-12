@@ -6,7 +6,7 @@
       "email": "carlos.mendoza@ejemplo.com",
       "creditScore": 685,
       "monthlyIncome": 28000,
-      "checkingBalance": 14500
+      "checkingBalance": 10300
     },
     {
       "id": "usr_sofia_02",
@@ -32,16 +32,25 @@
       "cardName": "Banorte Por Ti Oro",
       "last4": "4821",
       "creditLimit": 35000,
-      "currentBalance": 18400,
-      "minimumPayment": 1472,
+      "currentBalance": 14200,
+      "minimumPayment": 1215,
       "interestRateAnnual": 46.5,
-      "catAnnual": 54.2,
+      "catAnnual": 34.1,
       "cutoffDate": "2026-09-18",
       "paymentDueDate": "2026-10-08",
       "status": "ACTIVE"
     }
   ],
   "transactions": [
+    {
+      "id": "tx_1789201355664",
+      "userId": "usr_carlos_01",
+      "concept": "Pago TDC Banorte Por Ti Oro •••• 4821",
+      "category": "Pago tarjeta",
+      "amount": 4200,
+      "date": "2026-09-12",
+      "type": "EXPENSE"
+    },
     {
       "id": "tx_01",
       "userId": "usr_carlos_01",
@@ -111,5 +120,27 @@
       "alias": "Juan Amigo"
     }
   ],
-  "operations": []
+  "operations": [
+    {
+      "operationId": "BNTE-RST-72154",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "planId": "plan_18m",
+      "months": 18,
+      "monthlyQuota": 1215,
+      "appliedAt": "2026-09-12T08:20:43.244Z",
+      "status": "APPLIED"
+    },
+    {
+      "operationId": "PAY-TDC-802851",
+      "type": "CARD_PAYMENT",
+      "userId": "usr_carlos_01",
+      "cardId": "crd_carlos_oro",
+      "amount": 4200,
+      "remainingCardBalance": 14200,
+      "remainingCheckingBalance": 10300,
+      "timestamp": "2026-09-12T08:22:35.664Z",
+      "status": "APPLIED"
+    }
+  ]
 }

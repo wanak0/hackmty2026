@@ -21,9 +21,10 @@ interface ChatBubbleModalProps {
   onToggle: () => void;
   onClose: () => void;
   hasGeneratedScreen?: boolean;
+  suggestedPrompts?: string[];
 }
 
-const QUICK_PROMPTS = [
+const DEFAULT_QUICK_PROMPTS = [
   { label: '💳 Pagar menos intereses', text: 'Quiero pagar menos intereses de mi tarjeta' },
   { label: '📈 Simular inversión', text: 'Quiero simular una inversión en pagaré a 90 días' },
   { label: '💰 Ver saldos actuales', text: 'Quiero ver mis saldos actuales' },
@@ -38,7 +39,8 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
   isOpen,
   onToggle,
   onClose,
-  hasGeneratedScreen = false
+  hasGeneratedScreen = false,
+  suggestedPrompts
 }) => {
   const [inputText, setInputText] = useState('');
   const [showTooltip, setShowTooltip] = useState(true);
@@ -82,6 +84,14 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
   };
 
   const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
+
+  const chatChips =
+    suggestedPrompts && suggestedPrompts.length > 0
+      ? suggestedPrompts.map((text) => ({
+          label: text.length > 36 ? `${text.slice(0, 34)}…` : text,
+          text
+        }))
+      : DEFAULT_QUICK_PROMPTS;
 
   return (
     <aside aria-label="Asistente Virtual Maya Banorte">
@@ -154,6 +164,18 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
           {/* Historial de conversación */}
           <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#F8F9FB]">
+            {messages.length === 0 && !loading && (
+              <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center px-4 py-8">
+                <div className="w-12 h-12 rounded-2xl bg-[#FFF0F2] text-[#EB0029] flex items-center justify-center mb-3">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-black text-gray-900 mb-1">¿En qué te ayudo?</p>
+                <p className="text-[11px] text-gray-500 font-medium max-w-[240px]">
+                  Elige una sugerencia abajo o escribe tu petición. Maya dibujará la interfaz en el lienzo.
+                </p>
+              </div>
+            )}
+
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -236,9 +258,9 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Sugerencias Rápidas */}
+          {/* Sugerencias solo en el chat (dinámicas desde A2UI) */}
           <div className="px-3 pt-2 pb-1 bg-white border-t border-gray-100 flex gap-1.5 overflow-x-auto no-scrollbar">
-            {QUICK_PROMPTS.map((prompt, idx) => (
+            {chatChips.map((prompt, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -275,7 +297,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
             <div className="flex items-center justify-between text-[9px] text-gray-400 mt-2 px-1 font-medium">
               <span className="flex items-center gap-1">
                 <Shield className="w-2.5 h-2.5 text-[#EB0029]" />
-                <span>Ollama Cloud · Gemma 4:31b</span>
+                <span>Ollama · NLP + A2UI</span>
               </span>
               <span>Lienzo A2UI Activo</span>
             </div>

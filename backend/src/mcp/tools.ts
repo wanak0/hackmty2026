@@ -92,7 +92,7 @@ export function getClientFinancialStatus(userId: string) {
       name: user.name,
       creditScore: user.creditScore,
       monthlyIncome: user.monthlyIncome,
-      checkingBalance: user.checkingBalance || 14500
+      checkingBalance: user.checkingBalance ?? 14500
     },
     cards: cards.map((c) => ({
       id: c.id,
@@ -380,6 +380,82 @@ export function resolveRecipient(query: string) {
 }
 
 /**
+ * Tool: pay_credit_card
+ * Paga la TDC con saldo de cheques: baja checkingBalance y currentBalance.
+ */
+export function payCreditCard(
+  userId: string,
+  amount: number,
+  cardId?: string
+) {
+  const data = loadBankData();
+  const user = data.users.find((u) => u.id === userId);
+  if (!user) throw new Error('Usuario no encontrado');
+
+  const card = cardId
+    ? data.creditCards.find((c) => c.userId === userId && c.id === cardId)
+    : data.creditCards.find((c) => c.userId === userId);
+
+  if (!card) {
+    throw new Error(`Tarjeta no encontrada para el cliente ${userId}`);
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('El monto del pago debe ser mayor a 0.');
+  }
+
+  const payment = Math.min(amount, card.currentBalance);
+  if (payment <= 0) {
+    throw new Error('La tarjeta no tiene saldo pendiente.');
+  }
+
+  if (user.checkingBalance < payment) {
+    throw new Error(
+      `Saldo insuficiente en cheques ($${user.checkingBalance} MXN disponible, se requieren $${payment}).`
+    );
+  }
+
+  user.checkingBalance -= payment;
+  card.currentBalance = Math.round((card.currentBalance - payment) * 100) / 100;
+
+  const operationId = `PAY-TDC-${Math.floor(100000 + Math.random() * 900000)}`;
+  data.operations.push({
+    operationId,
+    type: 'CARD_PAYMENT',
+    userId,
+    cardId: card.id,
+    amount: payment,
+    remainingCardBalance: card.currentBalance,
+    remainingCheckingBalance: user.checkingBalance,
+    timestamp: new Date().toISOString(),
+    status: 'APPLIED'
+  });
+
+  data.transactions.unshift({
+    id: `tx_${Date.now()}`,
+    userId,
+    concept: `Pago TDC ${card.cardName} •••• ${card.last4}`,
+    category: 'Pago tarjeta',
+    amount: payment,
+    date: new Date().toISOString().split('T')[0],
+    type: 'EXPENSE'
+  });
+
+  saveBankData(data);
+
+  return {
+    success: true,
+    operationId,
+    cardName: card.cardName,
+    last4: card.last4,
+    amountPaid: payment,
+    remainingCardBalance: card.currentBalance,
+    remainingCheckingBalance: user.checkingBalance,
+    message: `Pago de $${payment.toLocaleString('es-MX')} aplicado a tu ${card.cardName}.`
+  };
+}
+
+/**
  * Tool 6: execute_transfer
  * Ejecuta una transferencia rápida SPEI
  */
@@ -454,6 +530,218 @@ export function getFinancialHealthDiagnostic(userId: string) {
       'Reestructurar tu tarjeta Banorte Por Ti Oro liberará $1,300 MXN mensuales de flujo.',
       'Comienza un fondo de emergencia con el Pagaré Banorte al 11.25% anual.'
     ]
+  };
+}
+
+const UI_ICON_CATALOG = [
+  'wallet',
+  'credit-card',
+  'piggy-bank',
+  'trending-up',
+  'trending-down',
+  'shield',
+  'sparkles',
+  'banknote',
+  'arrow-right-left',
+  'receipt',
+  'chart-pie',
+  'chart-bar',
+  'heart-pulse',
+  'target',
+  'zap',
+  'shopping-bag',
+  'car',
+  'home',
+  'check-circle',
+  'alert-triangle',
+  'coins',
+  'percent',
+  'calendar'
+] as const;
+
+/**
+ * Tool: get_ui_kit
+ * Devuelve catálogo de íconos, series listas para gráficas y bloques A2UI default
+ * con datos reales del usuario (para que el diseñador A2UI no invente UI pobre).
+ */
+export function getUiKit(userId: string, focus: string = 'auto') {
+  const status = getClientFinancialStatus(userId) as any;
+  const txs = getTransactionHistory(userId) as any;
+  const card = status.cards?.[0];
+  const checking = Number(status.user?.checkingBalance ?? 0);
+  const debt = Number(status.totalDebt ?? 0);
+  const limit = Number(card?.creditLimit || 35000);
+  const usagePct = limit > 0 ? Math.round((debt / limit) * 100) : 0;
+  const minPay = Number(card?.minimumPayment || 980);
+
+  const categoryEntries = Object.entries(txs.categoryBreakdown || {}).map(
+    ([label, value]) => ({
+      label,
+      value: Number(value),
+      color: undefined as string | undefined
+    })
+  );
+  const palette = ['#EB0029', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#64748B'];
+  categoryEntries.forEach((e, i) => {
+    e.color = palette[i % palette.length];
+  });
+
+  let debtSim: any = null;
+  try {
+    debtSim = simulateDebtRestructure(debt || 18400);
+  } catch {
+    debtSim = null;
+  }
+
+  const charts = {
+    spendingDonut: {
+      type: 'DonutChart',
+      props: {
+        title: 'Gastos por categoría',
+        centerLabel: 'Total',
+        centerValue: `$${Number(txs.totalExpenses || 0).toLocaleString('es-MX')}`,
+        segments: categoryEntries.map((e) => ({
+          label: e.label,
+          value: e.value,
+          color: e.color
+        }))
+      }
+    },
+    balancesBar: {
+      type: 'BarChart',
+      props: {
+        title: 'Saldos vs deuda',
+        unit: 'MXN',
+        orientation: 'horizontal',
+        bars: [
+          { label: 'Cheques', value: checking, color: '#10B981', icon: 'wallet' },
+          { label: 'Deuda TDC', value: debt, color: '#EB0029', icon: 'credit-card' },
+          {
+            label: 'Disponible TDC',
+            value: Math.max(0, limit - debt),
+            color: '#3B82F6',
+            icon: 'banknote'
+          }
+        ]
+      }
+    },
+    creditUsage: {
+      type: 'ProgressBar',
+      props: {
+        label: 'Uso de línea de crédito',
+        value: usagePct,
+        max: 100,
+        unit: '%',
+        tone: usagePct > 70 ? 'danger' : usagePct > 40 ? 'warning' : 'success',
+        icon: 'credit-card',
+        subtext: `$${debt.toLocaleString('es-MX')} de $${limit.toLocaleString('es-MX')}`
+      }
+    },
+    planBars: debtSim
+      ? {
+          type: 'BarChart',
+          props: {
+            title: 'Pago mensual por plazo',
+            unit: 'MXN/mes',
+            orientation: 'vertical',
+            bars: debtSim.options.map((o: any) => ({
+              label: `${o.months}m`,
+              value: o.monthlyPayment,
+              color: o.recommended ? '#EB0029' : '#94A3B8',
+              highlight: !!o.recommended
+            }))
+          }
+        }
+      : null
+  };
+
+  const defaultBlocks = [
+    {
+      id: 'kit_header',
+      type: 'SectionHeader',
+      props: {
+        icon: 'sparkles',
+        title: `Hola ${status.user?.name?.split(' ')[0] || ''}`,
+        subtitle: 'Vista con datos frescos del core Banorte'
+      }
+    },
+    {
+      id: 'kit_stats',
+      type: 'Grid',
+      props: { columns: 2 },
+      children: [
+        {
+          id: 'kit_stat_check',
+          type: 'StatTile',
+          props: {
+            icon: 'wallet',
+            label: 'Saldo débito',
+            value: `$${checking.toLocaleString('es-MX')}`,
+            tone: 'success'
+          }
+        },
+        {
+          id: 'kit_stat_debt',
+          type: 'StatTile',
+          props: {
+            icon: 'credit-card',
+            label: 'Deuda TDC',
+            value: `$${debt.toLocaleString('es-MX')}`,
+            tone: 'danger',
+            trend: 'negative'
+          }
+        }
+      ]
+    },
+    {
+      id: 'kit_usage',
+      type: 'ProgressBar',
+      props: charts.creditUsage.props
+    },
+    {
+      id: 'kit_donut',
+      type: 'DonutChart',
+      props: charts.spendingDonut.props
+    },
+    {
+      id: 'kit_bars',
+      type: 'BarChart',
+      props: charts.balancesBar.props
+    }
+  ];
+
+  const focusHints: Record<string, string[]> = {
+    spending: ['DonutChart', 'StatTile', 'TransactionTable', 'SectionHeader'],
+    debt: ['ProgressBar', 'BarChart', 'StatTile', 'OptionPills', 'SectionHeader'],
+    balances: ['BarChart', 'StatTile', 'ProgressBar', 'SectionHeader'],
+    health: ['ProgressBar', 'StatTile', 'FinancialHealthScore', 'SectionHeader'],
+    investment: ['StatTile', 'BarChart', 'InvestmentSimulator', 'SectionHeader'],
+    card_payment: ['StatTile', 'ProgressBar', 'OptionPills', 'SectionHeader'],
+    auto: ['SectionHeader', 'StatTile', 'DonutChart', 'BarChart', 'ProgressBar']
+  };
+
+  return {
+    focus: focus || 'auto',
+    icons: UI_ICON_CATALOG,
+    palette: {
+      primary: '#EB0029',
+      success: '#10B981',
+      warning: '#F59E0B',
+      info: '#3B82F6',
+      muted: '#64748B',
+      surface: '#F8F9FB'
+    },
+    charts,
+    defaultBlocks,
+    recommendedTypes: focusHints[focus] || focusHints.auto,
+    paymentHints: {
+      minimumPayment: minPay,
+      checking,
+      debt,
+      cardId: card?.id
+    },
+    usageNote:
+      'Copia props de charts.* o defaultBlocks a tu pantalla A2UI. Usa Icon name solo del catálogo icons[]. Incluye al menos 1 gráfica (DonutChart|BarChart|ProgressBar) y StatTile con icon.'
   };
 }
 

@@ -7,9 +7,7 @@ import {
   Sparkles,
   Wallet,
   MessageSquare,
-  Layers,
-  TrendingUp,
-  Sliders
+  Layers
 } from 'lucide-react';
 import { A2UIScreen, ChatMessage } from '../../types/a2ui';
 import { A2UIRenderer } from '../a2ui/A2UIRenderer';
@@ -34,18 +32,17 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
     window.setTimeout(() => setToast(null), 4500);
   };
 
-  // Cliente resiliente: intenta primero por proxy de Vite y hace fallback directo a 127.0.0.1:3001
   const apiFetch = async (url: string, options?: RequestInit): Promise<Response> => {
     try {
       const res = await fetch(url, options);
-      if (res.ok) return res;
+      if (res.ok || options?.signal?.aborted) return res;
       return await fetch(`http://127.0.0.1:3001${url}`, options);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || options?.signal?.aborted) throw err;
       return await fetch(`http://127.0.0.1:3001${url}`, options);
     }
   };
 
-  // Cargar estado inicial del cliente desde el Core MCP
   const fetchStatus = async () => {
     try {
       const res = await apiFetch('/api/user/usr_carlos_01/status');
@@ -53,13 +50,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
         const data = await res.json();
         setClientStatus(data);
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
       console.error('Error cargando estado del cliente', e);
       showToast('error', 'No se pudo cargar el estado bancario. ¿Está el backend en :3001?');
     }
   };
 
-  // Efecto para animar las etapas de razonamiento agéntico en vivo
   useEffect(() => {
     let t1: ReturnType<typeof setTimeout>;
     let t2: ReturnType<typeof setTimeout>;
@@ -74,60 +71,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
     };
   }, [loading]);
 
-  // Iniciar sesión con pantalla inicial
-  const initAgent = async (initialPrompt?: string) => {
-    const promptText = initialPrompt || 'Quiero pagar menos intereses de mi tarjeta';
-    setLoading(true);
-
-    const initialUserMsg: ChatMessage = {
-      id: `usr_${Date.now()}`,
-      role: 'user',
-      content: promptText,
-      timestamp: Date.now()
-    };
-    setMessages([initialUserMsg]);
-
-    try {
-      const res = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: promptText,
-          context: { userId: 'usr_carlos_01' },
-          history: []
-        })
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data: A2UIScreen = await res.json();
-      if (!data?.type && data && (data as any).error) {
-        throw new Error((data as any).error);
-      }
-      setScreen(data);
-
-      const assistantMsg: ChatMessage = {
-        id: `agent_${Date.now()}`,
-        role: 'assistant',
-        content: data.assistantMessage || 'Pantalla generada',
-        screen: data,
-        timestamp: Date.now()
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (error) {
-      console.error('Error al comunicarse con el backend A2UI:', error);
-      showToast('error', 'No se pudo generar la pantalla A2UI. Revisa que el backend esté activo.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchStatus();
-    initAgent('Quiero pagar menos intereses de mi tarjeta');
+    // Inicio limpio: sin mensaje default; el usuario elige una sugerencia
+    setIsChatModalOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Enviar mensaje del usuario a Maya Banorte
   const handleSendMessage = async (msg: string) => {
     if (!msg.trim() || loading) return;
 
@@ -175,7 +125,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
         timestamp: Date.now()
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      fetchStatus();
+      await fetchStatus();
     } catch (error) {
       console.error('Error procesando mensaje:', error);
       showToast('error', 'Falló la comunicación con Maya. Intenta de nuevo o reinicia la demo.');
@@ -184,7 +134,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
     }
   };
 
-  // Manejar acción viva disparada desde los componentes A2UI en el lienzo principal
   const handleA2UIAction = async (actionType: string, payload?: any) => {
     if (actionType === 'USER_PROMPT') {
       await handleSendMessage(payload.text);
@@ -192,28 +141,25 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
     }
 
     if (actionType === 'VIEW_ACCOUNT' || actionType === 'VIEW_BALANCES') {
-      handleA2UIAction('USER_PROMPT', { text: 'Quiero ver mis saldos actuales' });
-      fetchStatus();
+      await handleSendMessage('Quiero ver mis saldos actuales');
       return;
     }
 
-    if (actionType === 'SHOW_DEBT_RESTRUCTURE_OPTIONS' || actionType === 'PAY_CARD') {
-      handleA2UIAction('USER_PROMPT', { text: 'Quiero pagar menos intereses de mi tarjeta' });
-      fetchStatus();
+    if (actionType === 'SHOW_DEBT_RESTRUCTURE_OPTIONS') {
+      await handleSendMessage('Quiero pagar menos intereses de mi tarjeta');
       return;
     }
 
     if (actionType === 'SHOW_INVESTMENT') {
-      handleA2UIAction('USER_PROMPT', { text: 'Quiero simular una inversión en pagaré' });
+      await handleSendMessage('Quiero simular una inversión en pagaré');
       return;
     }
 
     if (actionType === 'VIEW_TRANSACTIONS') {
-      handleA2UIAction('USER_PROMPT', { text: '¿En qué he gastado este mes?' });
+      await handleSendMessage('¿En qué he gastado este mes?');
       return;
     }
 
-    // Acción viva de aplicar reestructuración, inversión o transferencia
     setLoading(true);
     try {
       const historyPayload = messages.map((m) => ({
@@ -251,8 +197,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
         timestamp: Date.now()
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      fetchStatus();
-      if (data.screenId?.includes('success')) {
+      await fetchStatus();
+      if (data.screenId?.includes('success') || data.components?.some((c: any) => c.type === 'ConfirmationCard')) {
         showToast('success', 'Operación aplicada en el core bancario (MCP).');
       }
     } catch (error) {
@@ -263,15 +209,15 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
     }
   };
 
-  // Reiniciar la base de datos para la demo
   const handleReset = async () => {
     try {
       const res = await apiFetch('/api/reset', { method: 'POST' });
       if (!res.ok) throw new Error('reset failed');
       setMessages([]);
-      fetchStatus();
-      showToast('success', 'Demo reiniciada a valores de fábrica.');
-      initAgent('Quiero pagar menos intereses de mi tarjeta');
+      setScreen(null);
+      await fetchStatus();
+      setIsChatModalOpen(true);
+      showToast('success', 'Demo reiniciada. Elige una sugerencia para empezar.');
     } catch (e) {
       console.error('Error reseteando demo:', e);
       showToast('error', 'No se pudo reiniciar la demo.');
@@ -280,6 +226,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
 
   const checkingBalance =
     clientStatus?.user?.checkingBalance ?? clientStatus?.checkingBalance ?? 14500;
+
+  const chatSuggestions =
+    screen?.suggestedPrompts && screen.suggestedPrompts.length > 0
+      ? screen.suggestedPrompts
+      : undefined;
 
   return (
     <div className="min-h-screen bg-[#F2F4F8] text-[#1E242D] flex flex-col selection:bg-[#EB0029] selection:text-white">
@@ -372,7 +323,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                 <span className="text-gray-300">•</span>
                 <span className="text-[#EB0029] font-semibold flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  Gemma 4:3.1b · Ollama
+                  NLP + A2UI · Ollama
                 </span>
               </div>
             </div>
@@ -476,31 +427,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                 </p>
               </div>
             </div>
-
-            {/* Accesos rápidos de interacción en el lienzo */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => handleA2UIAction('SHOW_DEBT_RESTRUCTURE_OPTIONS')}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-[#EB0029] hover:text-[#EB0029] text-gray-700 shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
-              >
-                <CreditCard className="w-3.5 h-3.5 text-[#EB0029]" />
-                <span>Pagar Deuda</span>
-              </button>
-              <button
-                onClick={() => handleA2UIAction('SHOW_INVESTMENT')}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-[#EB0029] hover:text-[#EB0029] text-gray-700 shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
-              >
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Inversión Pagaré</span>
-              </button>
-              <button
-                onClick={() => handleA2UIAction('VIEW_TRANSACTIONS')}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-[#EB0029] hover:text-[#EB0029] text-gray-700 shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
-              >
-                <Sliders className="w-3.5 h-3.5 text-amber-600" />
-                <span>Mis Gastos</span>
-              </button>
-            </div>
           </div>
 
           {/* Indicador de Razonamiento Agéntico en Vivo sobre el Lienzo */}
@@ -519,7 +445,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                   </div>
                   <div className="text-xs font-bold text-gray-900 mt-0.5">
                     {reasoningPhase === 1 && 'Paso 1: Consultando Core Bancario Banorte (MCP Tools)...'}
-                    {reasoningPhase === 2 && 'Paso 2: Razonando intención y diseñando pantalla con Gemma 4:3.1b (Ollama Cloud)...'}
+                    {reasoningPhase === 2 && 'Paso 2: NLP + diseño A2UI con Ollama Cloud...'}
                     {reasoningPhase >= 3 && 'Paso 3: Dibujando componentes A2UI en el lienzo principal...'}
                   </div>
                 </div>
@@ -563,7 +489,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                   Lienzo preparado para diseñar interfaces
                 </h3>
                 <p className="text-xs text-gray-500 max-w-md mb-4">
-                  Haz clic en la burbuja roja de Maya Banorte para pedir lo que necesites o pulsa una acción rápida arriba.
+                  Abre Maya y elige una sugerencia para generar la primera pantalla A2UI.
                 </p>
                 <button
                   onClick={() => setIsChatModalOpen(true)}
@@ -599,6 +525,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
         onToggle={() => setIsChatModalOpen((prev) => !prev)}
         onClose={() => setIsChatModalOpen(false)}
         hasGeneratedScreen={!!screen}
+        suggestedPrompts={chatSuggestions}
       />
     </div>
   );
