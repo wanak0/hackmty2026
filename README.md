@@ -1,76 +1,90 @@
-# Banorte A2UI · Interfaces Financieras Construidas por IA en Tiempo Real
+# Banorte A2UI · Interfaces financieras construidas por IA
 
-> Proyecto oficial para el **Hackathon Reto Banorte × Tec de Monterrey 2026**.  
-> *"El reto: que el modelo no solo conteste, sino que arme la pantalla que resuelve el problema financiero de quien pregunta."*
+Prototipo para el **Hackathon Reto Banorte × Tec de Monterrey 2026**.  
+Maya interpreta una petición en lenguaje natural, consulta el core simulado por MCP y dibuja una pantalla A2UI en el lienzo de Banca en línea.
 
----
-
-## Actualización de interfaz
-
-Identidad Banorte verificada, Inter local, navegación accesible, revisión de operaciones y pruebas del ciclo generativo. Detalles, fuentes y comandos de la entrega en [docs/UI_HANDOFF.md](docs/UI_HANDOFF.md).
-
-## 📌 Los Tres Pilares No Negociables del Reto
-
-1. **LLM al Centro:** Ollama Cloud (Gemma 4:31b) interpreta la intención en lenguaje natural, consulta el contexto del usuario y orquesta la experiencia. Gemini es fallback opcional; si falla la generación, se muestra un error claro sin inventar una pantalla bancaria.
-2. **MCP (Model Context Protocol) en TypeScript:** Expone herramientas estandarizadas (`@modelcontextprotocol/sdk` + registry `callMcpTool`) para consultar tarjetas, simular plazos, aplicar reestructuraciones, invertir y SPEI sobre el core bancario.
-3. **A2UI (Agent-to-UI):** La interfaz viaja como especificación JSON declarativa hacia React, renderizando componentes interactivos que **regresan la interacción del usuario al modelo como contexto para cerrar el ciclo**.
+No es una app oficial de Banorte. Usa datos sintéticos; no mueve dinero real.
 
 ---
 
-## 🏆 Los 4 Entregables del Hackathon
+## Qué hay hoy
 
-| Entregable | Ubicación / Estado |
+- Landing editorial (“Tu dinero, más claro”) y entrada a la demo con **Comenzar con Maya**.
+- Resumen de cuenta conectado a `/api/user/:id/status`. Si falla la consulta, se muestra error; no se inventa un saldo.
+- Seis tareas cotidianas: saldo, pago de tarjeta, transferencia, gastos, inversión y menos intereses.
+- Maya en un panel de conversación. La interfaz generada aparece en el lienzo principal, no como un muro de texto.
+- Revisión con diálogo nativo antes de pagar, transferir, invertir o reestructurar. Cancelar conserva los datos.
+- Identidad Inter local y rojo `#EB0029` verificados contra el portal Personal de Banorte. Detalle en [docs/UI_HANDOFF.md](docs/UI_HANDOFF.md).
+
+---
+
+## Los tres pilares del reto
+
+1. **LLM al centro:** Ollama Cloud (`gemma4:31b`) clasifica la intención y genera el JSON A2UI. Gemini es fallback opcional. Si no hay clave o se agotan los reintentos, se muestra un error claro; no se fabrica una pantalla bancaria ajena a la consulta.
+2. **MCP en TypeScript:** Un registry (`callMcpTool`) expone herramientas del core: saldos, movimientos, reestructura, inversión, pago de tarjeta y SPEI. El chat HTTP y el servidor MCP stdio comparten el mismo contrato.
+3. **A2UI:** La UI viaja como especificación JSON hacia React. Cada interacción vuelve al modelo como contexto y cierra el ciclo.
+
+---
+
+## Entregables
+
+| Entregable | Dónde está |
 |---|---|
-| **01. Demo en Vivo** | Corrida local integrada (Landing Page → Flujo A2UI con Carlos Mendoza \$18,400). |
-| **02. Repositorio de Código** | Componentes en `frontend/src/components/a2ui`, Servidor MCP en `backend/src/mcp`, Orquestador en `backend/src/agent`. |
-| **03. APIs y Datasets** | Especificación completa en [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) y base de datos simulada en `backend/src/data/mock_bank.json`. |
-| **04. Decisiones Técnicas** | Diagrama de flujo y justificación de trade-offs en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). |
+| Demo en vivo | Landing → Banca de ejemplo (Carlos Mendoza) → lienzo A2UI |
+| Código | `frontend/src/components/a2ui`, `frontend/src/components/chat`, `backend/src/mcp`, `backend/src/agent` |
+| APIs y datos | [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) y `backend/src/data/mock_bank.json` |
+| Decisiones técnicas | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 
 ---
 
-## 🚀 Inicio Rápido (Cómo Ejecutar la Demo)
+## Cómo ejecutar
 
-### 1. Requisitos Previos
-* Node.js 22.12 o superior (validado con Node 24).
-* API Key de [Ollama Cloud](https://ollama.com/settings/keys). **Sin clave se pueden consultar los saldos del resumen, pero Maya muestra un estado no disponible.**
+### Requisitos
 
-### 2. Configurar Variables de Entorno
-Crea un archivo `.env` en la carpeta `backend/`:
+- Node.js 22.12 o superior.
+- API key de [Ollama Cloud](https://ollama.com/settings/keys). Sin clave se pueden consultar los saldos del resumen, pero Maya no puede generar pantallas.
+
+### Arranque
+
 ```bash
 cd backend
 cp .env.example .env
 # Configura OLLAMA_API_KEY; no compartas este archivo.
 ```
 
-### 3. Levantar todo desde la raíz
+Desde la raíz:
+
 ```bash
 npm run setup   # primera vez
 npm run dev     # backend :3001 + frontend :5173
 ```
 
-O por separado:
+Por separado:
+
 ```bash
-cd backend && npm run dev   # http://localhost:3001
-cd frontend && npm run dev  # http://localhost:5173
+npm run dev:backend    # http://localhost:3001
+npm run dev:frontend   # http://localhost:5173
 ```
 
-### 4. Verificar flujo automatizado
+El proxy de Vite reenvía `/api` al backend. Si necesitas otro puerto: `BACKEND_URL=http://127.0.0.1:3002`.
+
+### Verificar
+
 ```bash
-npm run test:flow
+npm run test:flow                 # flujo A2UI + MCP
+npm test --prefix frontend        # catálogo e interacciones
+npm run test:ui --prefix backend  # contrato del JSON A2UI
 ```
+
+Para volver al estado inicial de la demo, usa **Reiniciar** en la cabecera (llama a `POST /api/reset`).
 
 ---
 
-## 🎬 Guion de Demostración para los Jueces
+## Cómo se usa la demo
 
-1. **Paso 1 (Landing Page):** Abre `http://localhost:5173` y presenta la propuesta de valor con diseño corporativo Banorte.
-2. **Paso 2 (Lanzar Demo):** Haz clic en **"Comenzar con Maya"**.
-3. **Paso 3 (Intención del Usuario):** Ingresa (o deja) la frase del reto:
-   > *"Quiero pagar menos intereses de mi tarjeta."*
-4. **Paso 4 (A2UI en Acción):** Observa cómo la pantalla se transforma en tiempo real mostrando:
-   * Comparativa de reducción de CAT de **54.2% a 34.1%**.
-   * Opciones a **12 meses ($1,690)**, **18 meses ($1,215)** y **24 meses ($980)**.
-   * Ahorro proyectado de **$4,900 MXN**.
-5. **Paso 5 (Cierre de Ciclo):** Selecciona el plan de 18 meses y haz clic en **"Aplicar plan →"**.
-6. **Paso 6 (Transacción Bancaria):** El servidor MCP ejecuta la acción en el core bancario y la UI genera el comprobante oficial con folio `BNTE-RST-XXXXX` y confeti de celebración.
-7. **Paso 7 (Reiniciar Demo):** Si los jueces quieren volver a probarlo, haz clic en el botón superior **"Reiniciar"**.
+1. Entra con **Comenzar con Maya**.
+2. Elige una tarea o escribe en el panel qué necesitas.
+3. Revisa la pantalla en el lienzo. Ajusta montos o plazos si aplica.
+4. Confirma en el diálogo antes de aplicar un cambio. El MCP escribe el folio en el core simulado.
+
+La cuenta de ejemplo es `usr_carlos_01`. El prototipo no sustituye autenticación ni autorización bancaria reales.
