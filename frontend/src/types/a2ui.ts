@@ -1,38 +1,38 @@
 export type A2UIComponentType =
   // Primitivas de Layout y Estructura
-  | 'Card'
-  | 'Grid'
-  | 'Stack'
-  | 'Section'
-  | 'SectionHeader'
-  | 'Divider'
+  | "Card"
+  | "Grid"
+  | "Stack"
+  | "Section"
+  | "SectionHeader"
+  | "Divider"
   // Primitivas de Contenido y Datos
-  | 'HeaderBadge'
-  | 'Text'
-  | 'AlertBanner'
-  | 'MetricItem'
-  | 'MetricGrid'
-  | 'Icon'
-  | 'StatTile'
-  | 'ProgressBar'
-  | 'BarChart'
-  | 'DonutChart'
+  | "HeaderBadge"
+  | "Text"
+  | "AlertBanner"
+  | "MetricItem"
+  | "MetricGrid"
+  | "Icon"
+  | "StatTile"
+  | "ProgressBar"
+  | "BarChart"
+  | "DonutChart"
   // Primitivas de Controles Interactivos
-  | 'ActionButton'
-  | 'SliderInput'
-  | 'SelectInput'
-  | 'TextInput'
-  | 'OptionPills'
+  | "ActionButton"
+  | "SliderInput"
+  | "SelectInput"
+  | "TextInput"
+  | "OptionPills"
   // Componentes de Alto Nivel Bancario
-  | 'MetricComparison'
-  | 'PlanOptionList'
-  | 'InvestmentSimulator'
-  | 'TransactionTable'
-  | 'TransferCard'
-  | 'FinancialHealthScore'
-  | 'ConfirmationCard'
-  | 'QuickSuggestions'
-  | 'ActionList'
+  | "MetricComparison"
+  | "PlanOptionList"
+  | "InvestmentSimulator"
+  | "TransactionTable"
+  | "TransferCard"
+  | "FinancialHealthScore"
+  | "ConfirmationCard"
+  | "QuickSuggestions"
+  | "ActionList"
   | string;
 
 export interface A2UIComponent {
@@ -43,7 +43,7 @@ export interface A2UIComponent {
 }
 
 export interface A2UIScreen {
-  type: 'a2ui_screen';
+  type: "a2ui_screen";
   screenId: string;
   assistantMessage: string;
   components: A2UIComponent[];
@@ -62,7 +62,7 @@ export interface PlanOption {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   screen?: A2UIScreen;
   timestamp: number;
@@ -72,5 +72,5 @@ export interface AgentReasoningStep {
   id: string;
   label: string;
   detail?: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: "pending" | "in_progress" | "completed";
 }

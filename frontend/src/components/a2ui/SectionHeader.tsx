@@ -1,5 +1,5 @@
-import React from 'react';
-import { Icon } from './Icon';
+import React from "react";
+import { Icon } from "./Icon";
 
 interface SectionHeaderProps {
   icon?: string;
@@ -9,17 +9,17 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
-  icon = 'sparkles',
+  icon = "sparkles",
   title,
   subtitle,
-  tag
+  tag,
 }) => {
   return (
     <div className="flex items-start gap-3 mb-1">
       <Icon name={icon} tone="primary" size="lg" />
       <div className="min-w-0 flex-1">
         {tag && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#E30613] block mb-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#EB0029] block mb-0.5">
             {tag}
           </span>
         )}
@@ -27,7 +27,9 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {title}
         </h3>
         {subtitle && (
-          <p className="text-xs text-gray-500 font-medium mt-0.5 leading-relaxed">{subtitle}</p>
+          <p className="text-xs text-gray-500 font-medium mt-0.5 leading-relaxed">
+            {subtitle}
+          </p>
         )}
       </div>
     </div>

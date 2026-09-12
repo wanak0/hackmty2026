@@ -1,468 +1,785 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
 import {
-  RotateCcw,
   ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  ChevronRight,
   CreditCard,
-  Shield,
-  Sparkles,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  Home,
+  Loader2,
+  MessageCircle,
+  PiggyBank,
+  ReceiptText,
+  RotateCcw,
+  Send,
+  ShieldCheck,
   Wallet,
-  MessageSquare,
-  Layers
-} from 'lucide-react';
-import { A2UIScreen, ChatMessage } from '../../types/a2ui';
-import { A2UIRenderer } from '../a2ui/A2UIRenderer';
-import { BanorteLogo } from '../common/BanorteLogo';
-import { ChatBubbleModal } from './ChatBubbleModal';
+  X,
+} from "lucide-react";
+import { A2UIScreen, ChatMessage } from "../../types/a2ui";
+import { A2UIRenderer } from "../a2ui/A2UIRenderer";
+import { BanorteLogo } from "../common/BanorteLogo";
 
-interface ChatContainerProps {
-  onBackToLanding: () => void;
+interface ClientStatus {
+  user: { name: string; checkingBalance: number };
+  totalDebt: number;
+  cards: {
+    cardName: string;
+    last4: string;
+    minimumPayment: number;
+    paymentDueDate: string;
+  }[];
 }
+type ActionPayload = Record<string, unknown>;
+type PendingAction = { type: string; payload: ActionPayload };
+const money = (value: number) =>
+  value.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+const tasks = [
+  {
+    icon: Wallet,
+    title: "Ver mi saldo",
+    detail: "Consulta tu dinero disponible",
+    prompt: "Quiero ver mis saldos actuales",
+  },
+  {
+    icon: CreditCard,
+    title: "Pagar mi tarjeta",
+    detail: "Revisa cuánto necesitas pagar",
+    prompt: "Quiero pagar mi tarjeta de crédito",
+  },
+  {
+    icon: ArrowUpRight,
+    title: "Transferir dinero",
+    detail: "Prepara un envío paso a paso",
+    prompt:
+      "Quiero hacer una transferencia, ayúdame a elegir el destinatario y el monto",
+  },
+  {
+    icon: ReceiptText,
+    title: "Ver mis gastos",
+    detail: "Entiende tus movimientos",
+    prompt: "¿En qué he gastado este mes?",
+  },
+  {
+    icon: PiggyBank,
+    title: "Hacer crecer mi ahorro",
+    detail: "Explora una inversión",
+    prompt: "Quiero simular una inversión de 5000 pesos en pagaré",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Pagar menos intereses",
+    detail: "Compara opciones para tu deuda",
+    prompt: "Quiero pagar menos intereses de mi tarjeta",
+  },
+];
+const mutationLabels: Record<string, string> = {
+  APPLY_RESTRUCTURE: "Aplicar plan de pagos",
+  CONFIRM_TRANSFER: "Confirmar transferencia",
+  CONFIRM_INVESTMENT: "Confirmar inversión",
+  PAY_CARD: "Confirmar pago de tarjeta",
+};
 
-export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding }) => {
+export function ChatContainer({
+  onBackToLanding,
+}: {
+  onBackToLanding: () => void;
+}) {
   const [loading, setLoading] = useState(false);
-  const [reasoningPhase, setReasoningPhase] = useState<number>(1);
   const [screen, setScreen] = useState<A2UIScreen | null>(null);
-  const [clientStatus, setClientStatus] = useState<any>(null);
+  const [clientStatus, setClientStatus] = useState<ClientStatus | null>(null);
+  const [statusError, setStatusError] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [toast, setToast] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [showAmounts, setShowAmounts] = useState(true);
+  const [largeText, setLargeText] = useState(
+    () => localStorage.getItem("banorte-large-text") === "true",
+  );
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
+  const [showHelp, setShowHelp] = useState(false);
+  const busy = useRef(false);
+  const controller = useRef<AbortController | null>(null);
+  const conversationLog = useRef<HTMLDivElement>(null);
+  const resultTitle = useRef<HTMLHeadingElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const showToast = (type: 'error' | 'success', message: string) => {
-    setToast({ type, message });
-    window.setTimeout(() => setToast(null), 4500);
-  };
-
-  const apiFetch = async (url: string, options?: RequestInit): Promise<Response> => {
+  const fetchStatus = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(url, options);
-      if (res.ok || options?.signal?.aborted) return res;
-      return await fetch(`http://127.0.0.1:3001${url}`, options);
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || options?.signal?.aborted) throw err;
-      return await fetch(`http://127.0.0.1:3001${url}`, options);
+      const response = await fetch("/api/user/usr_carlos_01/status", {
+        signal,
+      });
+      if (!response.ok) throw new Error("status");
+      setClientStatus(await response.json());
+      setStatusError(false);
+    } catch {
+      if (!signal?.aborted) setStatusError(true);
     }
-  };
-
-  const fetchStatus = async () => {
-    try {
-      const res = await apiFetch('/api/user/usr_carlos_01/status');
-      if (res.ok) {
-        const data = await res.json();
-        setClientStatus(data);
-      }
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return;
-      console.error('Error cargando estado del cliente', e);
-      showToast('error', 'No se pudo cargar el estado bancario. ¿Está el backend en :3001?');
-    }
-  };
-
-  useEffect(() => {
-    let t1: ReturnType<typeof setTimeout>;
-    let t2: ReturnType<typeof setTimeout>;
-    if (loading) {
-      setReasoningPhase(1);
-      t1 = setTimeout(() => setReasoningPhase(2), 800);
-      t2 = setTimeout(() => setReasoningPhase(3), 2200);
-    }
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [loading]);
-
-  useEffect(() => {
-    fetchStatus();
-    // Inicio limpio: sin mensaje default; el usuario elige una sugerencia
-    setIsChatModalOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSendMessage = async (msg: string) => {
-    if (!msg.trim() || loading) return;
-
-    setLoading(true);
-
-    const userMsg: ChatMessage = {
-      id: `usr_${Date.now()}`,
-      role: 'user',
-      content: msg,
-      timestamp: Date.now()
+  useEffect(() => {
+    const statusController = new AbortController();
+    void fetchStatus(statusController.signal);
+    return () => {
+      statusController.abort();
+      controller.current?.abort();
     };
+  }, [fetchStatus]);
+  useEffect(() => {
+    if (messages.length && conversationLog.current)
+      conversationLog.current.scrollTop = conversationLog.current.scrollHeight;
+  }, [messages]);
+  useEffect(() => {
+    localStorage.setItem("banorte-large-text", String(largeText));
+  }, [largeText]);
+  useEffect(() => {
+    if (pendingAction) dialogRef.current?.showModal();
+    else dialogRef.current?.close();
+  }, [pendingAction]);
 
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-
-    try {
-      const historyPayload = updatedMessages.map((m) => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      const res = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: msg,
-          context: { userId: 'usr_carlos_01' },
-          history: historyPayload
-        })
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data: A2UIScreen = await res.json();
-      if (!data?.components && (data as any)?.error) {
-        throw new Error((data as any).error);
-      }
-      setScreen(data);
-
-      const assistantMsg: ChatMessage = {
-        id: `agent_${Date.now()}`,
-        role: 'assistant',
-        content: data.assistantMessage || 'Pantalla generada en el lienzo',
-        screen: data,
-        timestamp: Date.now()
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      await fetchStatus();
-    } catch (error) {
-      console.error('Error procesando mensaje:', error);
-      showToast('error', 'Falló la comunicación con Maya. Intenta de nuevo o reinicia la demo.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleA2UIAction = async (actionType: string, payload?: any) => {
-    if (actionType === 'USER_PROMPT') {
-      await handleSendMessage(payload.text);
-      return;
-    }
-
-    if (actionType === 'VIEW_ACCOUNT' || actionType === 'VIEW_BALANCES') {
-      await handleSendMessage('Quiero ver mis saldos actuales');
-      return;
-    }
-
-    if (actionType === 'SHOW_DEBT_RESTRUCTURE_OPTIONS') {
-      await handleSendMessage('Quiero pagar menos intereses de mi tarjeta');
-      return;
-    }
-
-    if (actionType === 'SHOW_INVESTMENT') {
-      await handleSendMessage('Quiero simular una inversión en pagaré');
-      return;
-    }
-
-    if (actionType === 'VIEW_TRANSACTIONS') {
-      await handleSendMessage('¿En qué he gastado este mes?');
-      return;
-    }
-
+  const requestScreen = async (
+    message: string,
+    context: ActionPayload = {},
+    displayMessage = message,
+  ) => {
+    if (busy.current || !message.trim()) return;
+    busy.current = true;
     setLoading(true);
+    setError(null);
+    const requestController = new AbortController();
+    controller.current = requestController;
+    const timeout = window.setTimeout(() => requestController.abort(), 180000);
+    const history = messages.map(({ role, content }) => ({ role, content }));
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: displayMessage,
+        timestamp: Date.now(),
+      },
+    ]);
     try {
-      const historyPayload = messages.map((m) => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      const res = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // One request only: retrying a failed POST automatically could repeat an operation.
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: requestController.signal,
         body: JSON.stringify({
-          message: `Acción interactiva ejecutada: ${actionType}`,
-          context: {
-            action: actionType,
-            ...payload,
-            userId: 'usr_carlos_01'
-          },
-          history: historyPayload
-        })
+          message,
+          context: { ...context, userId: "usr_carlos_01" },
+          history,
+        }),
       });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (!data?.components && data?.error) {
-        throw new Error(data.error);
-      }
+      if (!response.ok) throw new Error("response");
+      const data: A2UIScreen = await response.json();
+      if (
+        data.type !== "a2ui_screen" ||
+        !Array.isArray(data.components) ||
+        !data.components.length
+      )
+        throw new Error("screen");
       setScreen(data);
-
-      const assistantMsg: ChatMessage = {
-        id: `agent_${Date.now()}`,
-        role: 'assistant',
-        content: data.assistantMessage || 'Operación bancaria procesada',
-        screen: data,
-        timestamp: Date.now()
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      await fetchStatus();
-      if (data.screenId?.includes('success') || data.components?.some((c: any) => c.type === 'ConfirmationCard')) {
-        showToast('success', 'Operación aplicada en el core bancario (MCP).');
-      }
-    } catch (error) {
-      console.error('Error aplicando acción A2UI:', error);
-      showToast('error', 'No se pudo aplicar la acción bancaria. Revisa el backend.');
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content:
+            data.assistantMessage ||
+            "La información está lista. Revísala en tu pantalla.",
+          screen: data,
+          timestamp: Date.now(),
+        },
+      ]);
+      void fetchStatus();
+      requestAnimationFrame(() => {
+        resultTitle.current?.focus({ preventScroll: true });
+        resultTitle.current?.scrollIntoView({ block: "start" });
+      });
+    } catch {
+      setError(
+        context.action && mutationLabels[String(context.action)]
+          ? "No pudimos confirmar el resultado. Consulta tus saldos y movimientos antes de repetir la operación."
+          : "No pudimos obtener una respuesta. Tu consulta sigue en la conversación; puedes volver a intentarlo.",
+      );
+      void fetchStatus();
     } finally {
+      clearTimeout(timeout);
+      busy.current = false;
       setLoading(false);
     }
   };
 
-  const handleReset = async () => {
+  const onAction = (actionType: string, payload: ActionPayload = {}) => {
+    if (busy.current) return;
+    if (
+      mutationLabels[actionType] &&
+      actionType !== "APPLY_RESTRUCTURE" &&
+      (!Number.isFinite(Number(payload.amount)) || Number(payload.amount) <= 0)
+    ) {
+      setError("Escribe un importe mayor que cero antes de continuar.");
+      return;
+    }
+    if (
+      actionType === "CONFIRM_TRANSFER" &&
+      !String(payload.recipient || "").trim()
+    ) {
+      setError("Indica a quién quieres enviar antes de continuar.");
+      return;
+    }
+    if (mutationLabels[actionType]) {
+      setPendingAction({ type: actionType, payload });
+      return;
+    }
+    if (actionType === "USER_PROMPT") {
+      void requestScreen(String(payload.text || "Ayúdame a continuar"));
+      return;
+    }
+    const prompts: Record<string, string> = {
+      VIEW_ACCOUNT: tasks[0].prompt,
+      VIEW_BALANCES: tasks[0].prompt,
+      SHOW_DEBT_RESTRUCTURE_OPTIONS: tasks[5].prompt,
+      SHOW_INVESTMENT: tasks[4].prompt,
+      VIEW_TRANSACTIONS: tasks[3].prompt,
+    };
+    if (prompts[actionType]) {
+      void requestScreen(prompts[actionType]);
+      return;
+    }
+    void requestScreen(
+      `Acción interactiva: ${actionType}`,
+      { ...payload, action: actionType },
+      actionType === "SELECT_PLAN"
+        ? `Quiero revisar el plan ${String(payload.planId || "")
+            .replace("plan_", "")
+            .replace("m", " meses")}.`
+        : "Actualizar mi consulta",
+    );
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!input.trim() || loading) return;
+    void requestScreen(input.trim());
+    setInput("");
+  };
+  const confirmAction = async () => {
+    if (!pendingAction || busy.current) return;
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action.type !== "RESET") {
+      await requestScreen(
+        `Acción confirmada: ${action.type}`,
+        { ...action.payload, action: action.type },
+        mutationLabels[action.type],
+      );
+      return;
+    }
+    busy.current = true;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await apiFetch('/api/reset', { method: 'POST' });
-      if (!res.ok) throw new Error('reset failed');
+      const response = await fetch("/api/reset", { method: "POST" });
+      if (!response.ok) throw new Error("reset");
       setMessages([]);
       setScreen(null);
       await fetchStatus();
-      setIsChatModalOpen(true);
-      showToast('success', 'Demo reiniciada. Elige una sugerencia para empezar.');
-    } catch (e) {
-      console.error('Error reseteando demo:', e);
-      showToast('error', 'No se pudo reiniciar la demo.');
+    } catch {
+      setError("No se pudo reiniciar la demostración. Inténtalo más tarde.");
+    } finally {
+      busy.current = false;
+      setLoading(false);
     }
   };
-
-  const checkingBalance =
-    clientStatus?.user?.checkingBalance ?? clientStatus?.checkingBalance ?? 14500;
-
-  const chatSuggestions =
-    screen?.suggestedPrompts && screen.suggestedPrompts.length > 0
-      ? screen.suggestedPrompts
-      : undefined;
+  const card = clientStatus?.cards[0];
+  const formatBalance = (value?: number) =>
+    !showAmounts ? "••••••" : value === undefined ? "—" : money(value);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] text-[#1A1A1A] flex flex-col selection:bg-[#E30613] selection:text-white">
-      {toast && (
-        <div
-          role="status"
-          className={`fixed top-20 right-4 z-50 max-w-sm px-4 py-3 rounded-2xl shadow-lg text-xs font-bold border ${
-            toast.type === 'error'
-              ? 'bg-white border-red-200 text-red-700'
-              : 'bg-white border-emerald-200 text-emerald-800'
-          }`}
-        >
-          {toast.message}
+    <div className={`bank-app ${largeText ? "large-text" : ""}`}>
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido
+      </a>
+      <div className="institutional-strip">
+        <div className="page-width">
+          <span>GRUPO FINANCIERO BANORTE</span>
+          <span>Demo · Sin dinero real</span>
         </div>
-      )}
-      {/* Topbar Oficial Banorte */}
-      <header className="bg-[#E30613] text-white sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      </div>
+      <header className="site-header">
+        <div className="page-width header-inner">
+          <button
+            className="logo-home"
+            onClick={onBackToLanding}
+            disabled={loading}
+            aria-label="Volver a la bienvenida"
+          >
+            <BanorteLogo size="lg" />
+          </button>
+          <div className="header-tools">
             <button
-              onClick={onBackToLanding}
-              className="w-9 h-9 rounded-full hover:bg-white/15 text-white transition-colors flex items-center justify-center"
-              title="Regresar"
+              className="text-size-control"
+              aria-label="Letra grande"
+              aria-pressed={largeText}
+              onClick={() => setLargeText((value) => !value)}
             >
-              <ArrowLeft className="w-5 h-5" />
+              <span aria-hidden="true">Aa</span> <span>Letra grande</span>
             </button>
-            <BanorteLogo size="sm" variant="white" />
-          </div>
-
-          <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsChatModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-all"
-              title="Abrir chat con Maya"
+              className="help-control"
+              aria-label="Ayuda"
+              onClick={() => setShowHelp((value) => !value)}
+              aria-expanded={showHelp}
             >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Maya</span>
+              <HelpCircle size={20} />
+              <span>Ayuda</span>
             </button>
-
-            <div className="flex items-center gap-2 px-2 py-1 text-xs">
-              <div className="w-7 h-7 rounded-full bg-white text-[#E30613] font-semibold text-xs flex items-center justify-center">
-                C
-              </div>
-              <div className="hidden sm:block text-left text-white">
-                <div className="font-semibold leading-tight">Carlos Mendoza</div>
-              </div>
+            <span className="header-divider" />
+            <div className="user-avatar" aria-hidden="true">
+              {clientStatus?.user.name.charAt(0) || "C"}
             </div>
-
-            <button
-              onClick={handleReset}
-              title="Reiniciar datos de demo a valores iniciales"
-              className="w-9 h-9 rounded-full hover:bg-white/15 text-white flex items-center justify-center transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+            <span className="user-name">
+              {clientStatus?.user.name || "Cuenta de ejemplo"}
+            </span>
           </div>
         </div>
       </header>
-
-      <div className="flex-1 flex flex-col pb-24">
-        {/* Resumen Superior de Cuentas Banorte */}
-        <section className="bg-white border-b border-[#E6E6E6]">
-          <div className="max-w-6xl mx-auto">
-            <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-              <h1 className="text-base font-semibold text-[#1A1A1A] font-display">
-                Hola, Carlos
-              </h1>
-              <span className="text-[11px] text-[#6B6B6B] font-medium">Banorte Móvil</span>
-            </div>
-
+      {showHelp && (
+        <div
+          className="help-banner page-width"
+          role="region"
+          aria-label="Ayuda"
+        >
+          <div>
+            <strong>Estamos para ayudarte, paso a paso.</strong>
+            <p>
+              Elige una tarea o escribe a Maya. Revisa los resultados y, si vas
+              a realizar una operación, verifica los datos antes de confirmar.
+              Todos los movimientos de esta demo son simulados.
+            </p>
+          </div>
+          <button
+            className="icon-button"
+            aria-label="Cerrar ayuda"
+            onClick={() => setShowHelp(false)}
+          >
+            <X size={20} />
+          </button>
+        </div>
+      )}
+      <main className="page-width dashboard" id="main-content">
+        <div className="dashboard-heading">
+          <div>
+            <p className="breadcrumb">
+              <Home size={14} /> Mi banca <ChevronRight size={13} /> Inicio
+            </p>
+            <h1>
+              Hola,{" "}
+              {clientStatus?.user.name.split(" ")[0] ||
+                "te damos la bienvenida"}
+              .
+            </h1>
+            <p>Hoy es un buen día para tener tus cuentas claras.</p>
             <button
-              type="button"
-              className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-[#F0F0F0] hover:bg-[#FAFAFA] text-left"
+              className="mobile-maya-link"
+              onClick={() => inputRef.current?.focus()}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center shrink-0">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-[#1A1A1A]">Banorte Por Ti Oro ···· 4821</div>
-                  <div className="text-[11px] text-[#6B6B6B]">
-                    Deuda ${clientStatus?.totalDebt?.toLocaleString('es-MX') || '18,400'} MXN
-                  </div>
-                </div>
-              </div>
-              <span className="text-[#E30613] text-lg leading-none">›</span>
-            </button>
-
-            <button
-              type="button"
-              className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-[#F0F0F0] hover:bg-[#FAFAFA] text-left"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#F5F5F5] text-[#1A1A1A] flex items-center justify-center shrink-0">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-[#1A1A1A]">Enlace Digital ···· 4092</div>
-                  <div className="text-[11px] text-[#6B6B6B]">
-                    Disponible ${Number(checkingBalance).toLocaleString('es-MX')} MXN
-                  </div>
-                </div>
-              </div>
-              <span className="text-[#E30613] text-lg leading-none">›</span>
+              <MessageCircle size={18} /> Escribir a Maya{" "}
+              <ArrowRight size={16} />
             </button>
           </div>
-        </section>
-
-        {/* ======================================================== */}
-        {/* EL LIENZO PRINCIPAL A2UI: DONDE SE DIBUJA LO QUE GENERA  */}
-        {/* ======================================================== */}
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
-          {/* Barra de Encabezado del Lienzo */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-banorte-gradient text-white flex items-center justify-center shadow-xs">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-semibold text-[#1A1A1A] tracking-tight flex items-center gap-2 font-display">
-                  <span>Lienzo Generativo A2UI</span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                    En Vivo
-                  </span>
-                </h2>
-                <p className="text-xs text-gray-500 font-medium">
-                  Las pantallas dinámicas diseñadas por Maya Banorte se renderizan en este espacio central.
-                </p>
-              </div>
-            </div>
+          <div className="demo-label">
+            <span /> Estás en una demostración
           </div>
-
-          {/* Indicador de Razonamiento Agéntico en Vivo sobre el Lienzo */}
-          {loading && (
-            <div className="mb-6 p-4 rounded-xl bg-white border border-[#F3C5C8] flex items-center justify-between animate-pulse">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#FFF0F1] flex items-center justify-center text-[#E30613]">
-                  <Sparkles className="w-5 h-5 animate-spin" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-semibold tracking-wider text-[#E30613]">
-                      Generando interfaz interactiva en vivo
-                    </span>
-                    <span className="w-2 h-2 rounded-full bg-[#E30613] animate-ping" />
-                  </div>
-                  <div className="text-xs font-bold text-gray-900 mt-0.5">
-                    {reasoningPhase === 1 && 'Paso 1: Consultando Core Bancario Banorte (MCP Tools)...'}
-                    {reasoningPhase === 2 && 'Paso 2: NLP + diseño A2UI con Ollama Cloud...'}
-                    {reasoningPhase >= 3 && 'Paso 3: Dibujando componentes A2UI en el lienzo principal...'}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 1 ? 'bg-[#E30613]' : 'bg-gray-200'
-                  }`}
-                />
-                <span
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 2 ? 'bg-[#E30613]' : 'bg-gray-200'
-                  }`}
-                />
-                <span
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 3 ? 'bg-[#E30613]' : 'bg-gray-200'
-                  }`}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Renderizado en Vivo de la Pantalla A2UI */}
-          <div className="flex-1 flex flex-col justify-start">
-            {screen ? (
-              <div className="animate-in fade-in zoom-in-98 duration-300">
-                <A2UIRenderer
-                  screen={screen}
-                  onAction={handleA2UIAction}
-                  loading={loading}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center p-8 bg-white rounded-xl border border-[#E6E6E6] text-center">
-                <div className="w-14 h-14 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center mb-4">
-                  <Sparkles className="w-7 h-7" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#1A1A1A] mb-1 font-display">
-                  Elige una operación
-                </h3>
-                <p className="text-xs text-[#6B6B6B] max-w-md mb-4">
-                  Abre Maya y pulsa una sugerencia para generar la primera pantalla.
-                </p>
+        </div>
+        <div className="workspace-layout">
+          <div className="bank-content">
+            <section aria-labelledby="accounts-title">
+              <div className="accounts-heading">
+                <h2 id="accounts-title">Tu dinero</h2>
                 <button
-                  onClick={() => setIsChatModalOpen(true)}
-                  className="px-5 py-2.5 rounded-full bg-[#E30613] text-white text-xs font-semibold hover:bg-[#C10510] transition-all flex items-center gap-2"
+                  className="text-button"
+                  onClick={() => setShowAmounts((value) => !value)}
+                  aria-pressed={!showAmounts}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Abrir Asistente Maya</span>
+                  {showAmounts ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showAmounts ? "Ocultar saldos" : "Mostrar saldos"}
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Footer discreto del lienzo */}
-          <div className="mt-8 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-400 gap-2">
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-[#E30613]" />
-              <span>Protocolo A2UI Pure Canvas · Banca Digital Banorte</span>
+              {statusError && (
+                <div className="inline-error" role="alert">
+                  No pudimos actualizar tus saldos.{" "}
+                  <button onClick={() => void fetchStatus()}>
+                    Volver a consultar
+                  </button>
+                </div>
+              )}
+              <div className="account-grid">
+                <button
+                  className="account-card debit-account"
+                  onClick={() => void requestScreen(tasks[0].prompt)}
+                  disabled={loading}
+                >
+                  <div className="account-top">
+                    <Wallet size={22} />
+                    <span>CUENTA DE DÉBITO</span>
+                    <ArrowUpRight size={20} />
+                  </div>
+                  <h3>
+                    Enlace Digital <span>•••• 4092</span>
+                  </h3>
+                  <p>Dinero disponible</p>
+                  <strong>
+                    {formatBalance(clientStatus?.user.checkingBalance)}{" "}
+                    <small>MXN</small>
+                  </strong>
+                  <div className="account-bottom">
+                    Ver mi cuenta <ArrowRight size={17} />
+                  </div>
+                </button>
+                <button
+                  className="account-card credit-account"
+                  onClick={() => void requestScreen(tasks[1].prompt)}
+                  disabled={loading}
+                >
+                  <div className="account-top">
+                    <CreditCard size={22} />
+                    <span>TARJETA DE CRÉDITO</span>
+                    <ArrowUpRight size={20} />
+                  </div>
+                  <h3>
+                    {card?.cardName || "Tarjeta de crédito"}{" "}
+                    <span>•••• {card?.last4 || "—"}</span>
+                  </h3>
+                  <p>Saldo por pagar</p>
+                  <strong>
+                    {formatBalance(clientStatus?.totalDebt)} <small>MXN</small>
+                  </strong>
+                  <div className="account-bottom">
+                    Revisar mi próximo pago <ArrowRight size={17} />
+                  </div>
+                </button>
+              </div>
+            </section>
+            <section
+              className="operations-section"
+              aria-labelledby="operations-title"
+            >
+              <div className="section-heading">
+                <h2 id="operations-title">¿Qué necesitas hacer?</h2>
+                <span>Elige una opción para empezar</span>
+              </div>
+              <div className="operation-grid">
+                {tasks.map(({ icon: Icon, title, detail, prompt }) => (
+                  <button
+                    key={title}
+                    disabled={loading}
+                    onClick={() => void requestScreen(prompt)}
+                  >
+                    <span className="operation-icon">
+                      <Icon size={23} strokeWidth={1.7} />
+                    </span>
+                    <div>
+                      <strong>{title}</strong>
+                      <span>{detail}</span>
+                    </div>
+                    <ChevronRight size={17} />
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section
+              className="result-section"
+              aria-labelledby="result-heading"
+              aria-busy={loading}
+            >
+              <div className="result-heading">
+                <div>
+                  <span className="eyebrow">A TU MEDIDA</span>
+                  <h2 id="result-heading" ref={resultTitle} tabIndex={-1}>
+                    {screen
+                      ? "Tu consulta, paso a paso"
+                      : "Aquí comienza tu siguiente paso"}
+                  </h2>
+                </div>
+                <span className="result-symbol" aria-hidden="true">
+                  <MessageCircle size={22} />
+                </span>
+              </div>
+              {loading && (
+                <div className="loading-notice" role="status">
+                  <Loader2 className="animate-spin" size={22} />
+                  <div>
+                    <strong>Maya está preparando tu respuesta</strong>
+                    <p>
+                      Esto puede tomar un momento. Mantén esta página abierta.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="inline-error request-error" role="alert">
+                  <p>{error}</p>
+                  <button onClick={() => inputRef.current?.focus()}>
+                    Escribir a Maya <ArrowRight size={16} />
+                  </button>
+                </div>
+              )}
+              {screen ? (
+                <A2UIRenderer
+                  key={screen.screenId}
+                  screen={screen}
+                  onAction={onAction}
+                  loading={loading}
+                />
+              ) : (
+                !loading && (
+                  <div className="empty-result">
+                    <div className="empty-result-mark" aria-hidden="true">
+                      <ReceiptText size={34} strokeWidth={1.3} />
+                      <span>
+                        <Check size={13} />
+                      </span>
+                    </div>
+                    <div>
+                      <h3>Lo que necesitas, explicado con claridad.</h3>
+                      <p>
+                        Elige una opción de arriba o cuéntale a Maya.
+                        <br />
+                        Aquí verás la información y los pasos para continuar.
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+              {screen?.suggestedPrompts && (
+                <div className="result-suggestions">
+                  {screen.suggestedPrompts.map((text) => (
+                    <button
+                      key={text}
+                      disabled={loading}
+                      onClick={() => void requestScreen(text)}
+                    >
+                      {text}
+                      <ArrowRight size={16} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+            <div className="bank-footnote">
+              <ShieldCheck size={18} />
+              <span>
+                Este es un espacio de prueba. Los saldos, tasas y operaciones
+                son de ejemplo.
+              </span>
             </div>
-            <span>Haz clic en la burbuja flotante para dialogar con Maya</span>
           </div>
-        </main>
-      </div>
-
-      {/* ======================================================== */}
-      {/* BURBUJA FLOTANTE Y MODAL DE CHAT ESCONDIDO               */}
-      {/* ======================================================== */}
-      <ChatBubbleModal
-        messages={messages}
-        loading={loading}
-        reasoningPhase={reasoningPhase}
-        onSendMessage={handleSendMessage}
-        isOpen={isChatModalOpen}
-        onToggle={() => setIsChatModalOpen((prev) => !prev)}
-        onClose={() => setIsChatModalOpen(false)}
-        hasGeneratedScreen={!!screen}
-        suggestedPrompts={chatSuggestions}
-      />
+          <aside className="assistant-panel" aria-label="Conversación con Maya">
+            <div className="assistant-header">
+              <span className="maya-icon">
+                <MessageCircle size={24} />
+              </span>
+              <div>
+                <h2>Maya</h2>
+                <p>Tu asistente Banorte</p>
+              </div>
+              <span className="assistant-badge">A tu lado</span>
+            </div>
+            <div className="assistant-intro">
+              <h3>Lo vemos juntos.</h3>
+              <p>
+                Estoy aquí para ayudarte con tus cuentas. ¿Qué necesitas hoy?
+              </p>
+            </div>
+            <div
+              className="conversation"
+              ref={conversationLog}
+              role="log"
+              aria-label="Mensajes con Maya"
+              aria-live="polite"
+            >
+              {messages.length === 0 ? (
+                <div className="conversation-example">
+                  <p>Puedes escribir algo como:</p>
+                  <button
+                    disabled={loading}
+                    onClick={() =>
+                      void requestScreen(
+                        "Quiero saber cuánto debo de mi tarjeta",
+                      )
+                    }
+                  >
+                    “Quiero saber cuánto debo de mi tarjeta”
+                    <ArrowUpRight size={18} />
+                  </button>
+                  <span>No necesitas usar palabras complicadas.</span>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`conversation-message ${message.role}`}
+                  >
+                    <span>{message.role === "user" ? "Tú" : "Maya"}</span>
+                    <p>{message.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <form onSubmit={submit} className="composer">
+              <label htmlFor="maya-message">Escribe aquí tu consulta</label>
+              <textarea
+                id="maya-message"
+                ref={inputRef}
+                value={input}
+                maxLength={2000}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault();
+                    if (input.trim() && !loading) {
+                      void requestScreen(input.trim());
+                      setInput("");
+                    }
+                  }
+                }}
+                placeholder="Por ejemplo: ¿cuánto puedo ahorrar?"
+                rows={3}
+              />
+              <button
+                className="button primary"
+                disabled={loading || !input.trim()}
+                type="submit"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Esperando
+                    respuesta
+                  </>
+                ) : (
+                  <>
+                    Enviar a Maya <Send size={17} />
+                  </>
+                )}
+              </button>
+              <p>Evita escribir contraseñas o números de tarjeta.</p>
+            </form>
+            <button
+              className="reset-demo"
+              disabled={loading}
+              onClick={() => setPendingAction({ type: "RESET", payload: {} })}
+            >
+              <RotateCcw size={16} /> Reiniciar demostración
+            </button>
+          </aside>
+        </div>
+      </main>
+      <footer className="dashboard-footer page-width">
+        <span>Banorte × Tec de Monterrey · HackMTY 2026</span>
+        <button onClick={onBackToLanding} disabled={loading}>
+          <ArrowLeft size={16} /> Volver a la bienvenida
+        </button>
+      </footer>
+      <dialog
+        ref={dialogRef}
+        className="review-dialog"
+        onCancel={() => setPendingAction(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setPendingAction(null);
+        }}
+        aria-labelledby="review-title"
+      >
+        <div className="review-dialog-inner">
+          <button
+            className="icon-button dialog-close"
+            aria-label="Cerrar revisión"
+            onClick={() => setPendingAction(null)}
+          >
+            <X size={20} />
+          </button>
+          <span className="maya-icon">
+            <ShieldCheck size={26} />
+          </span>
+          <p className="eyebrow">UN ÚLTIMO VISTAZO</p>
+          <h2 id="review-title">
+            {pendingAction?.type === "RESET"
+              ? "¿Reiniciar la demostración?"
+              : "Revisa antes de confirmar"}
+          </h2>
+          <p>
+            {pendingAction?.type === "RESET"
+              ? "Los saldos de ejemplo volverán a su estado inicial y se borrará esta conversación."
+              : "Esta operación solo se realizará con el dinero de ejemplo de la demostración."}
+          </p>
+          {pendingAction && pendingAction.type !== "RESET" && (
+            <dl>
+              <div>
+                <dt>Operación</dt>
+                <dd>{mutationLabels[pendingAction.type]}</dd>
+              </div>
+              {Object.entries(pendingAction.payload)
+                .filter(
+                  ([key, value]) =>
+                    [
+                      "recipient",
+                      "amount",
+                      "concept",
+                      "days",
+                      "planId",
+                    ].includes(key) && value != null,
+                )
+                .map(([key, value]) => (
+                  <div key={key}>
+                    <dt>
+                      {
+                        {
+                          recipient: "Para",
+                          amount: "Importe",
+                          concept: "Concepto",
+                          days: "Plazo en días",
+                          planId: "Plan",
+                        }[key]
+                      }
+                    </dt>
+                    <dd>
+                      {key === "amount" ? money(Number(value)) : String(value)}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          )}
+          <div className="dialog-actions">
+            <button
+              className="button secondary"
+              onClick={() => setPendingAction(null)}
+            >
+              Volver
+            </button>
+            <button
+              className="button primary"
+              onClick={() => void confirmAction()}
+            >
+              {pendingAction?.type === "RESET"
+                ? "Sí, reiniciar"
+                : "Confirmar en la demo"}
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
-};
-
-
+}

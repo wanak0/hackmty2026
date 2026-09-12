@@ -1,3 +1,5 @@
+> **Actualización 12/09/2026:** la nueva experiencia y sus verificaciones están documentadas en [docs/UI_HANDOFF.md](docs/UI_HANDOFF.md). Maya usa panel integrado; la identidad se verificó como Inter, #EB0029, #8F0017 y #323E48. El modelo disponible confirmado es `gemma4:31b` para clasificación y A2UI.
+
 # 🚀 RELEVO TÉCNICO: PROYECTO BANORTE A2UI (HACKATHON TEC 2026)
 > **Documento de Contexto y Transferencia para GPT 6 ASTRA DE CODEX**  
 > *Versión del sistema: 2.0.0 (Multi-dominio Generativo)*  

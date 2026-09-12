@@ -31,7 +31,7 @@ interface NlpPlan {
 
 const DEFAULT_USER = 'usr_carlos_01';
 const DEFAULT_CARD = 'crd_carlos_oro';
-const NLP_MODEL = () => (process.env.OLLAMA_MODEL || 'gemma4:3.1b').trim();
+const NLP_MODEL = () => (process.env.OLLAMA_MODEL || 'gemma4:31b').trim();
 const A2UI_MODEL = () => (process.env.A2UI_MODEL || 'gemma4:31b').trim();
 
 const NLP_SYSTEM = `Eres el clasificador NLP de Banorte. Responde SOLO JSON válido:
@@ -474,7 +474,7 @@ export function normalizeA2UIScreen(
 
   const rawComps: any[] = s.components || [];
 
-  const hydrated = rawComps.map((c: any, index: number) => {
+  const hydrateComponent = (c: any, index: number): A2UIComponent => {
     const type = c.type || c.component || 'HeaderBadge';
     const id = c.id || `comp_${type}_${index}`;
     const props = { ...(c.props || {}) };
@@ -526,15 +526,12 @@ export function normalizeA2UIScreen(
     }
 
     const children = Array.isArray(c.children)
-      ? c.children.map((child: any, cIdx: number) => ({
-          id: child.id || `subcomp_${cIdx}`,
-          type: child.type || 'Text',
-          props: child.props || {}
-        }))
+      ? c.children.map((child: any, childIndex: number) => hydrateComponent(child, childIndex))
       : undefined;
 
     return { id, type, props, children };
-  });
+  };
+  const hydrated = rawComps.map(hydrateComponent);
 
   const components = sanitizeScreenComponents(hydrated, userId, mcpHint);
 
@@ -674,19 +671,19 @@ function runMcpTools(
   return results;
 }
 
-function buildErrorScreen(message: string): A2UIScreen {
+function buildErrorScreen(message: string, operationMayHaveRun = false): A2UIScreen {
   return {
     type: 'a2ui_screen',
     screenId: 'agent_generation_error',
     assistantMessage:
-      'No pude generar la interfaz A2UI en este momento. Revisa la conexión con Ollama Cloud e inténtalo de nuevo.',
+      operationMayHaveRun ? 'No pude mostrar el resultado. Revisa tus saldos y movimientos antes de repetir la operación.' : 'Maya no está disponible por el momento. Tus saldos siguen a la vista.',
     components: [
       {
         id: 'comp_err_badge',
         type: 'HeaderBadge',
         props: {
-          tag: 'A2UI · GENERACIÓN',
-          title: 'No se pudo construir la pantalla'
+          tag: 'NO DISPONIBLE',
+          title: 'No pudimos preparar tu respuesta'
         }
       },
       {
@@ -695,16 +692,16 @@ function buildErrorScreen(message: string): A2UIScreen {
         props: {
           variant: 'warning',
           message:
-            'El modelo A2UI no respondió con JSON válido. Tu solicitud se conserva; puedes reintentar.'
+            operationMayHaveRun ? 'La operación pudo haberse registrado. No vuelvas a confirmarla hasta revisar tus movimientos.' : 'Tu consulta se conserva en la conversación. Puedes volver a intentarlo más tarde.'
         }
       },
       {
         id: 'comp_err_action',
         type: 'ActionButton',
         props: {
-          label: 'Reintentar solicitud',
+          label: operationMayHaveRun ? 'Consultar mis movimientos' : 'Volver a consultar',
           actionType: 'USER_PROMPT',
-          payload: { text: message }
+          payload: { text: operationMayHaveRun ? 'Quiero consultar mis últimos movimientos' : message }
         }
       }
     ],
@@ -787,179 +784,8 @@ function isCompleteA2UIScreen(screen: A2UIScreen | null | undefined): screen is 
 }
 
 /**
- * Garantía final: UI rica con kit visual MCP (gráficas + StatTiles + íconos).
+ * Verifica y normaliza la pantalla generada contra el catálogo disponible.
  */
-function buildGuaranteedScreenFromMcp(
-  message: string,
-  intent: string,
-  mcpContext: Record<string, unknown>,
-  userId: string
-): A2UIScreen {
-  const kit =
-    (mcpContext.get_ui_kit as any) ||
-    callMcpTool('get_ui_kit', { userId, focus: intent || 'auto' });
-  const status = (mcpContext.get_client_financial_status ||
-    callMcpTool('get_client_financial_status', { userId })) as any;
-  const debtSim = (mcpContext.simulate_debt_restructure || null) as any;
-  const name = status?.user?.name || 'Carlos';
-  const debt = status?.totalDebt ?? 0;
-  const checking = status?.user?.checkingBalance ?? 0;
-  const card = status?.cards?.[0];
-
-  const components: A2UIComponent[] = [
-    {
-      id: 'g_header',
-      type: 'SectionHeader',
-      props: {
-        icon: 'sparkles',
-        tag: 'A2UI · UI KIT',
-        title: `Resumen para ${name}`,
-        subtitle: `Respondí a: “${message.slice(0, 80)}”`
-      }
-    },
-    {
-      id: 'g_stats',
-      type: 'Grid',
-      props: { columns: 2 },
-      children: [
-        {
-          id: 'g_stat_check',
-          type: 'StatTile',
-          props: {
-            icon: 'wallet',
-            label: 'Saldo débito',
-            value: `$${Number(checking).toLocaleString('es-MX')}`,
-            tone: 'success'
-          }
-        },
-        {
-          id: 'g_stat_debt',
-          type: 'StatTile',
-          props: {
-            icon: 'credit-card',
-            label: 'Deuda TDC',
-            value: `$${Number(debt).toLocaleString('es-MX')}`,
-            tone: 'danger',
-            trend: 'negative'
-          }
-        }
-      ]
-    }
-  ];
-
-  if (kit?.charts?.creditUsage?.props) {
-    components.push({
-      id: 'g_usage',
-      type: 'ProgressBar',
-      props: kit.charts.creditUsage.props
-    });
-  }
-
-  if (intent === 'transactions' || intent === 'spending' || /gasto/.test(message.toLowerCase())) {
-    if (kit?.charts?.spendingDonut?.props?.segments?.length) {
-      components.push({
-        id: 'g_donut',
-        type: 'DonutChart',
-        props: kit.charts.spendingDonut.props
-      });
-    }
-  } else if (kit?.charts?.balancesBar?.props) {
-    components.push({
-      id: 'g_bars',
-      type: 'BarChart',
-      props: kit.charts.balancesBar.props
-    });
-  }
-
-  if (debtSim?.options?.length) {
-    if (kit?.charts?.planBars?.props) {
-      components.push({
-        id: 'g_plan_bars',
-        type: 'BarChart',
-        props: kit.charts.planBars.props
-      });
-    }
-    components.push({
-      id: 'g_pills',
-      type: 'OptionPills',
-      props: {
-        label: 'Plazos disponibles',
-        options: debtSim.options.map((o: any) => ({
-          id: o.planId,
-          label: `${o.months}m · $${o.monthlyPayment}/mes`,
-          actionType: 'APPLY_RESTRUCTURE',
-          payload: { planId: o.planId },
-          selected: !!o.recommended
-        }))
-      }
-    });
-  } else if (intent === 'card_payment' || /pagar|abonar|pago/.test(message.toLowerCase())) {
-    const minPay = Number(card?.minimumPayment) || kit?.paymentHints?.minimumPayment || 980;
-    const maxPay = Math.min(Number(checking) || 0, Number(debt) || 0);
-    const midPay = Math.min(Math.round(maxPay / 2) || minPay, maxPay || minPay);
-    components.push({
-      id: 'g_pay',
-      type: 'OptionPills',
-      props: {
-        label: 'Pagar TDC desde cheques',
-        options: [
-          {
-            id: 'pay_min',
-            label: `Mínimo $${minPay.toLocaleString('es-MX')}`,
-            actionType: 'PAY_CARD',
-            payload: { amount: minPay, cardId: card?.id }
-          },
-          ...(midPay > minPay
-            ? [
-                {
-                  id: 'pay_mid',
-                  label: `$${midPay.toLocaleString('es-MX')}`,
-                  actionType: 'PAY_CARD',
-                  payload: { amount: midPay, cardId: card?.id }
-                }
-              ]
-            : []),
-          ...(maxPay > 0
-            ? [
-                {
-                  id: 'pay_max',
-                  label: `Todo lo disponible $${maxPay.toLocaleString('es-MX')}`,
-                  actionType: 'PAY_CARD',
-                  payload: { amount: maxPay, cardId: card?.id }
-                }
-              ]
-            : [])
-        ]
-      }
-    });
-  } else {
-    components.push({
-      id: 'g_actions',
-      type: 'ActionList',
-      props: {
-        title: 'Siguiente paso',
-        actions: [
-          { label: 'Ver opciones de deuda', actionType: 'SHOW_DEBT_RESTRUCTURE_OPTIONS' },
-          { label: 'Ver gastos del mes', actionType: 'VIEW_TRANSACTIONS' }
-        ]
-      }
-    });
-  }
-
-  return {
-    type: 'a2ui_screen',
-    screenId: `guaranteed_${intent}_${Date.now()}`,
-    assistantMessage: `${name}, aquí tienes una vista con gráficas e íconos del UI Kit Banorte.`,
-    components,
-    suggestedPrompts: [
-      'Quiero pagar mi tarjeta de crédito',
-      'Quiero pagar menos intereses de mi tarjeta',
-      '¿En qué he gastado este mes?',
-      'Simular una inversión'
-    ]
-  };
-}
-
 function tryParseA2UI(
   raw: string,
   userId: string,
@@ -1090,8 +916,8 @@ userId: ${userId}
     }
   }
 
-  console.warn('[A2UI] Todos los intentos fallaron → pantalla garantizada desde MCP');
-  return buildGuaranteedScreenFromMcp(message, intent, mcpContext, userId);
+  console.warn('[A2UI] Todos los intentos fallaron → error mínimo, sin pantalla bancaria prefabricada');
+  return buildErrorScreen(message, ['APPLY_RESTRUCTURE', 'CONFIRM_INVESTMENT', 'CONFIRM_TRANSFER', 'PAY_CARD'].includes(intent));
 }
 
 async function handleMutationAction(
@@ -1129,7 +955,7 @@ async function handleMutationAction(
       });
       mcpContext.apply_debt_restructuring = opResult;
       mcpContext.simulate_debt_restructure = sim;
-      mutationNote = `Reestructura aplicada con éxito: ${JSON.stringify(opResult)}. Genera ConfirmationCard y celebra el cierre.`;
+      mutationNote = `Reestructura aplicada con éxito: ${JSON.stringify(opResult)}. Genera ConfirmationCard con el folio, plazo y pago mensual. Describe el resultado con claridad.`;
     } else if (action === 'CONFIRM_INVESTMENT') {
       const amount = Number(context.amount) || 25000;
       const days = Number(context.days) || 91;
@@ -1202,7 +1028,7 @@ async function handleMutationAction(
     mutationNote
   );
 
-  return isCompleteA2UIScreen(screen) ? screen : buildErrorScreen(message || action);
+  return screen;
 }
 
 /**
@@ -1214,6 +1040,9 @@ export async function processUserMessage(
   history?: HistoryItem[]
 ): Promise<A2UIScreen> {
   const userId = context?.userId || DEFAULT_USER;
+
+  // A missing model connection must not masquerade as a generated banking screen.
+  if (!ollamaConfigured()) return buildErrorScreen(message);
 
   if (context?.action) {
     return handleMutationAction(message, context, history, userId);
@@ -1245,6 +1074,6 @@ export async function processUserMessage(
     focus: plan.intent || 'auto'
   });
 
-  // generateA2UIScreen reintenta hasta tener UI completa; si falla, garantiza pantalla MCP
+  // Si falla la generación, devuelve un estado de error sin inventar una pantalla de negocio.
   return generateA2UIScreen(message, plan.intent, mcpContext, history, userId);
 }

@@ -5,9 +5,13 @@
 
 ---
 
+## Actualización de interfaz
+
+Identidad Banorte verificada, Inter local, navegación accesible, revisión de operaciones y pruebas del ciclo generativo. Detalles, fuentes y comandos de la entrega en [docs/UI_HANDOFF.md](docs/UI_HANDOFF.md).
+
 ## 📌 Los Tres Pilares No Negociables del Reto
 
-1. **LLM al Centro:** Ollama Cloud (Gemma 4:3.1b) interpreta la intención en lenguaje natural, consulta el contexto del usuario y orquesta la experiencia. Gemini es fallback opcional; sin red, un motor NLP determinístico garantiza la demo.
+1. **LLM al Centro:** Ollama Cloud (Gemma 4:31b) interpreta la intención en lenguaje natural, consulta el contexto del usuario y orquesta la experiencia. Gemini es fallback opcional; si falla la generación, se muestra un error claro sin inventar una pantalla bancaria.
 2. **MCP (Model Context Protocol) en TypeScript:** Expone herramientas estandarizadas (`@modelcontextprotocol/sdk` + registry `callMcpTool`) para consultar tarjetas, simular plazos, aplicar reestructuraciones, invertir y SPEI sobre el core bancario.
 3. **A2UI (Agent-to-UI):** La interfaz viaja como especificación JSON declarativa hacia React, renderizando componentes interactivos que **regresan la interacción del usuario al modelo como contexto para cerrar el ciclo**.
 
@@ -27,15 +31,15 @@
 ## 🚀 Inicio Rápido (Cómo Ejecutar la Demo)
 
 ### 1. Requisitos Previos
-* Node.js v18 o superior.
-* API Key de [Ollama Cloud](https://ollama.com/settings/keys) (opcional) y/o Gemini. **Sin claves el sistema usa fallback determinístico + MCP** para presentaciones sin latencia ni riesgo de caídas de red.
+* Node.js 22.12 o superior (validado con Node 24).
+* API Key de [Ollama Cloud](https://ollama.com/settings/keys). **Sin clave se pueden consultar los saldos del resumen, pero Maya muestra un estado no disponible.**
 
 ### 2. Configurar Variables de Entorno
 Crea un archivo `.env` en la carpeta `backend/`:
 ```bash
 cd backend
 cp .env.example .env
-# Opcional: OLLAMA_API_KEY y/o GEMINI_API_KEY
+# Configura OLLAMA_API_KEY; no compartas este archivo.
 ```
 
 ### 3. Levantar todo desde la raíz
@@ -60,7 +64,7 @@ npm run test:flow
 ## 🎬 Guion de Demostración para los Jueces
 
 1. **Paso 1 (Landing Page):** Abre `http://localhost:5173` y presenta la propuesta de valor con diseño corporativo Banorte.
-2. **Paso 2 (Lanzar Demo):** Haz clic en **"Probar Experiencia Banorte AI"**.
+2. **Paso 2 (Lanzar Demo):** Haz clic en **"Comenzar con Maya"**.
 3. **Paso 3 (Intención del Usuario):** Ingresa (o deja) la frase del reto:
    > *"Quiero pagar menos intereses de mi tarjeta."*
 4. **Paso 4 (A2UI en Acción):** Observa cómo la pantalla se transforma en tiempo real mostrando:

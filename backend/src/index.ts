@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const NLP_MODEL = 'gemma4:3.1b';
+const NLP_MODEL = 'gemma4:31b';
 const A2UI_MODEL = 'gemma4:31b';
 
 app.use(cors());
