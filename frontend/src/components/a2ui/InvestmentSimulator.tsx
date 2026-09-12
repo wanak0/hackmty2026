@@ -62,7 +62,7 @@ export const InvestmentSimulator: React.FC<InvestmentSimulatorProps> = ({
             step="5000"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="w-full accent-[#EB0029] cursor-pointer h-2 bg-gray-200 rounded-lg"
+            className="w-full accent-[#E30613] cursor-pointer h-2 bg-gray-200 rounded-lg"
           />
           <div className="flex justify-between text-[11px] text-gray-500 mt-1.5 font-mono">
             <span>$5,000</span>
@@ -74,7 +74,7 @@ export const InvestmentSimulator: React.FC<InvestmentSimulatorProps> = ({
         <div>
           <div className="flex justify-between items-center text-xs text-gray-600 mb-2 font-semibold">
             <span className="flex items-center gap-1.5 uppercase text-[11px]">
-              <Calendar className="w-3.5 h-3.5 text-[#EB0029]" /> Plazo en Días:
+              <Calendar className="w-3.5 h-3.5 text-[#E30613]" /> Plazo en Días:
             </span>
             <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2.5 py-0.5 rounded border border-gray-200">
               {days} días
@@ -88,7 +88,7 @@ export const InvestmentSimulator: React.FC<InvestmentSimulatorProps> = ({
                 onClick={() => setDays(d)}
                 className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                   days === d
-                    ? 'bg-[#EB0029] text-white border-[#EB0029] shadow-xs'
+                    ? 'bg-[#E30613] text-white border-[#E30613] shadow-xs'
                     : 'bg-[#F8F9FB] border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >

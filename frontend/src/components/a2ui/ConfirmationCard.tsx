@@ -71,7 +71,7 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
       <div className="bg-[#F8F9FB] rounded-2xl p-4 border border-gray-200 space-y-2.5 text-xs mb-5">
         <div className="flex justify-between items-center py-1.5 border-b border-gray-200">
           <span className="text-gray-500 flex items-center gap-1.5 font-medium">
-            <Hash className="w-3.5 h-3.5 text-[#EB0029]" /> Folio de Operación
+            <Hash className="w-3.5 h-3.5 text-[#E30613]" /> Folio de Operación
           </span>
           <span className="font-mono font-bold text-gray-900">{operationId}</span>
         </div>
@@ -105,7 +105,7 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
           onClick={() => window.print()}
           className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-center gap-1.5 transition-all"
         >
-          <Download className="w-3.5 h-3.5 text-[#EB0029]" />
+          <Download className="w-3.5 h-3.5 text-[#E30613]" />
           <span>Descargar Comprobante</span>
         </button>
 

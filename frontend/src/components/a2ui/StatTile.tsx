@@ -29,7 +29,7 @@ export const StatTile: React.FC<StatTileProps> = ({
         <div className="flex items-baseline gap-1.5 mt-0.5">
           <span className="text-lg font-black text-gray-900 tracking-tight truncate">{value}</span>
           {trend === 'positive' && <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-          {trend === 'negative' && <TrendingDown className="w-3.5 h-3.5 text-[#EB0029] shrink-0" />}
+          {trend === 'negative' && <TrendingDown className="w-3.5 h-3.5 text-[#E30613] shrink-0" />}
         </div>
         {subtext && (
           <span className="text-[11px] text-gray-500 font-medium block mt-0.5">{subtext}</span>

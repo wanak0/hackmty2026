@@ -14,8 +14,8 @@ interface ProgressBarProps {
 const BAR_TONE: Record<string, string> = {
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
-  danger: 'bg-[#EB0029]',
-  primary: 'bg-[#EB0029]'
+  danger: 'bg-[#E30613]',
+  primary: 'bg-[#E30613]'
 };
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({

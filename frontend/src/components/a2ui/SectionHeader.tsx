@@ -19,7 +19,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       <Icon name={icon} tone="primary" size="lg" />
       <div className="min-w-0 flex-1">
         {tag && (
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#EB0029] block mb-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#E30613] block mb-0.5">
             {tag}
           </span>
         )}

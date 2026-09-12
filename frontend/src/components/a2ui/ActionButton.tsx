@@ -21,10 +21,10 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     <button
       disabled={loading}
       onClick={onClick}
-      className={`w-full py-4 px-6 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.98] ${
+      className={`w-full py-3.5 px-6 rounded-full font-semibold text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.98] ${
         isPrimary
-          ? 'bg-[#EB0029] hover:bg-[#D40024] text-white shadow-banorte-red disabled:opacity-50'
-          : 'bg-white hover:bg-gray-50 text-gray-800 border border-gray-300'
+          ? 'bg-[#E30613] hover:bg-[#C10510] text-white shadow-banorte-red disabled:opacity-50'
+          : 'bg-white hover:bg-[#FAFAFA] text-[#1A1A1A] border border-[#E6E6E6]'
       }`}
     >
       {loading ? (

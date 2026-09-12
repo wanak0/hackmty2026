@@ -45,7 +45,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
       case 'Card': {
         const variantStyles =
           comp.props.variant === 'highlight'
-            ? 'border-[#EB0029] bg-[#FFF8F9]'
+            ? 'border-[#E30613] bg-[#FFF0F1]'
             : comp.props.variant === 'danger'
             ? 'border-red-300 bg-red-50/50'
             : comp.props.variant === 'success'
@@ -55,7 +55,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
         return (
           <div
             key={comp.id}
-            className={`p-4 sm:p-5 rounded-2xl border shadow-xs transition-all ${variantStyles}`}
+            className={`p-4 sm:p-5 rounded-xl border transition-all ${variantStyles}`}
           >
             {comp.props.title && (
               <div className="mb-3">
@@ -178,7 +178,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
             : 'text-sm';
         const colorClass =
           comp.props.color === 'primary'
-            ? 'text-[#EB0029]'
+            ? 'text-[#E30613]'
             : comp.props.color === 'muted'
             ? 'text-gray-500'
             : comp.props.color === 'danger'
@@ -205,7 +205,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
             key={comp.id}
             className={`p-3.5 rounded-xl border ${
               comp.props.variant === 'primary'
-                ? 'bg-[#FFF5F6] border-[#FECDD3]'
+                ? 'bg-[#FFF0F1] border-[#F3C5C8]'
                 : 'bg-gray-50 border-gray-200'
             }`}
           >
@@ -215,7 +215,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
             <div className="flex items-baseline gap-2">
               <span
                 className={`text-lg font-black ${
-                  comp.props.variant === 'primary' ? 'text-[#EB0029]' : 'text-gray-900'
+                  comp.props.variant === 'primary' ? 'text-[#E30613]' : 'text-gray-900'
                 }`}
               >
                 {comp.props.value}
@@ -224,7 +224,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
                 <TrendingUp className="w-4 h-4 text-emerald-600 inline" />
               )}
               {comp.props.trend === 'negative' && (
-                <TrendingDown className="w-4 h-4 text-[#EB0029] inline" />
+                <TrendingDown className="w-4 h-4 text-[#E30613] inline" />
               )}
             </div>
             {comp.props.subtext && (
@@ -243,7 +243,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
                 key={idx}
                 className={`p-3 rounded-xl border ${
                   item.highlight
-                    ? 'bg-[#FFF5F6] border-[#EB0029] text-[#EB0029]'
+                    ? 'bg-[#FFF0F1] border-[#E30613] text-[#E30613]'
                     : 'bg-[#F9FAFB] border-gray-200 text-gray-900'
                 }`}
               >
@@ -267,10 +267,10 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
           <div key={comp.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
             <div className="flex justify-between items-center text-xs font-bold text-gray-800">
               <span className="flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-[#EB0029]" />
+                <Sliders className="w-3.5 h-3.5 text-[#E30613]" />
                 {comp.props.label}
               </span>
-              <span className="text-[#EB0029] font-black">
+              <span className="text-[#E30613] font-semibold">
                 {comp.props.defaultValue} {comp.props.unit || ''}
               </span>
             </div>
@@ -290,7 +290,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
                   value: Number(e.target.value)
                 })
               }
-              className="w-full accent-[#EB0029] cursor-pointer"
+              className="w-full accent-[#E30613] cursor-pointer"
             />
           </div>
         );
@@ -314,8 +314,8 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
                   }
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
                     opt.selected
-                      ? 'bg-[#EB0029] text-white border-[#EB0029] shadow-xs'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#EB0029] hover:text-[#EB0029]'
+                      ? 'bg-[#E30613] text-white border-[#E30613]'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#E30613] hover:text-[#E30613]'
                   }`}
                 >
                   {opt.label}
@@ -467,10 +467,10 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
                 <button
                   key={idx}
                   onClick={() => onAction(act.actionType || 'USER_PROMPT', { text: act.label })}
-                  className="p-4 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-[#EB0029] text-xs font-bold text-gray-800 hover:text-gray-900 transition-all flex items-center justify-between text-left group shadow-xs"
+                  className="p-4 rounded-none bg-white hover:bg-[#FAFAFA] border-b border-[#F0F0F0] text-xs font-semibold text-[#1A1A1A] transition-all flex items-center justify-between text-left group"
                 >
                   <span>{act.label}</span>
-                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#EB0029] group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-4 h-4 text-[#E30613]" />
                 </button>
               ))}
             </div>
@@ -490,7 +490,7 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-7 shadow-sm transition-all duration-300">
+    <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 sm:p-6 transition-all duration-300">
       {/* Lienzo A2UI puro: solo componentes generados (el texto de Maya vive en el chat) */}
       <div className="space-y-4">{screen.components.map((comp) => renderComponent(comp))}</div>
     </div>

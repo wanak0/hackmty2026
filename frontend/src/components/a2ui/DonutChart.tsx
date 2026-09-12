@@ -14,7 +14,7 @@ interface DonutChartProps {
   segments: Segment[];
 }
 
-const DEFAULT_COLORS = ['#EB0029', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#64748B'];
+const DEFAULT_COLORS = ['#E30613', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#64748B'];
 
 export const DonutChart: React.FC<DonutChartProps> = ({
   title,

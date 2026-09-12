@@ -3,57 +3,50 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Source Sans 3', Montserrat, system-ui, sans-serif;
+  }
+
   body {
-    @apply bg-[#F2F4F8] text-[#1E242D] font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-[#EB0029] selection:text-white;
+    @apply bg-[#F5F5F5] text-[#1A1A1A] antialiased selection:bg-[#E30613] selection:text-white;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: Montserrat, 'Source Sans 3', sans-serif;
   }
 }
 
-/* Banorte official gradients */
+/* Banorte Móvil — rojo plano corporativo */
 .bg-banorte-gradient {
-  background: linear-gradient(135deg, #EB0029 0%, #D40024 60%, #BA0020 100%);
+  background: #E30613;
 }
 
 .bg-banorte-header-red {
-  background: linear-gradient(180deg, #EB0029 0%, #D80025 100%);
+  background: #E30613;
 }
 
 .banorte-subtle-glow {
-  box-shadow: 0 4px 20px -2px rgba(235, 0, 41, 0.12);
+  box-shadow: 0 2px 10px -2px rgba(227, 6, 19, 0.12);
 }
 
 .banorte-bubble-glow {
-  box-shadow: 0 8px 30px 0 rgba(235, 0, 41, 0.4), 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px 0 rgba(227, 6, 19, 0.35), 0 2px 8px 0 rgba(0, 0, 0, 0.08);
 }
 
-/* Eye-catching floating animations */
 @keyframes banorte-float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-7px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
 }
 
 @keyframes banorte-pulse-halo {
-  0% {
-    box-shadow: 0 0 0 0 rgba(235, 0, 41, 0.6), 0 0 0 0 rgba(235, 0, 41, 0.3);
-  }
-  70% {
-    box-shadow: 0 0 0 16px rgba(235, 0, 41, 0), 0 0 0 28px rgba(235, 0, 41, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(235, 0, 41, 0), 0 0 0 0 rgba(235, 0, 41, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(227, 6, 19, 0.55), 0 0 0 0 rgba(227, 6, 19, 0.25); }
+  70% { box-shadow: 0 0 0 16px rgba(227, 6, 19, 0), 0 0 0 28px rgba(227, 6, 19, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(227, 6, 19, 0), 0 0 0 0 rgba(227, 6, 19, 0); }
 }
 
 @keyframes banorte-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-banorte-float {
@@ -70,22 +63,20 @@
   animation: banorte-shimmer 2.2s infinite;
 }
 
-/* Clean light scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F2F4F8;
+  background: #F5F5F5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #C8C8C8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #EB0029;
+  background: #E30613;
 }
-

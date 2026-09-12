@@ -50,7 +50,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
     <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4 mb-5">
       {/* Header Banorte SPEI */}
       <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF0F2] border border-[#FECDD3] text-xs font-bold text-[#EB0029]">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF0F1] border border-[#F3C5C8] text-xs font-bold text-[#E30613]">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Transferencia SPEI · Banorte Móvil</span>
         </div>
@@ -60,7 +60,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
           onClick={() => setIsEditing(!isEditing)}
           className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1.5 transition-colors px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold border border-gray-200"
         >
-          <Edit2 className="w-3 h-3 text-[#EB0029]" />
+          <Edit2 className="w-3 h-3 text-[#E30613]" />
           <span>{isEditing ? 'Listo' : 'Modificar datos'}</span>
         </button>
       </div>
@@ -77,7 +77,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
               type="number"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="bg-white border-2 border-[#EB0029] text-gray-900 font-black text-2xl rounded-xl px-3 py-1.5 w-40 text-center outline-none shadow-xs"
+              className="bg-white border-2 border-[#E30613] text-gray-900 font-black text-2xl rounded-xl px-3 py-1.5 w-40 text-center outline-none shadow-xs"
             />
             <span className="text-xs font-bold text-gray-500">MXN</span>
           </div>
@@ -107,7 +107,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   placeholder="Nombre de la persona o comercio..."
-                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-[#EB0029] mt-0.5"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-[#E30613] mt-0.5"
                 />
               ) : (
                 <span className="font-bold text-gray-900 text-sm">{recipient}</span>
@@ -139,7 +139,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
               onChange={(e) => setClabe(e.target.value)}
               placeholder="18 dígitos CLABE o 16 dígitos de tarjeta..."
               maxLength={18}
-              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 outline-none focus:border-[#EB0029] font-mono"
+              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 outline-none focus:border-[#E30613] font-mono"
             />
           </div>
         )}
@@ -147,7 +147,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
         {/* Cuenta de Retiro */}
         <div className="p-3.5 bg-[#F8F9FB] rounded-xl border border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#FFF0F2] border border-[#FECDD3] flex items-center justify-center text-[#EB0029] shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#FFF0F1] border border-[#F3C5C8] flex items-center justify-center text-[#E30613] shrink-0">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
@@ -168,7 +168,7 @@ export const TransferCard: React.FC<TransferCardProps> = ({
               type="text"
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              className="bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-[#EB0029] w-1/2 text-right"
+              className="bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-[#E30613] w-1/2 text-right"
             />
           ) : (
             <span className="font-bold text-gray-900">{concept}</span>

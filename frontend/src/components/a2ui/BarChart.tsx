@@ -46,7 +46,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                     className="w-full rounded-t-lg transition-all duration-700"
                     style={{
                       height: `${h}%`,
-                      backgroundColor: bar.color || (bar.highlight ? '#EB0029' : '#94A3B8')
+                      backgroundColor: bar.color || (bar.highlight ? '#E30613' : '#94A3B8')
                     }}
                   />
                 </div>
@@ -89,7 +89,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${w}%`,
-                    backgroundColor: bar.color || '#EB0029'
+                    backgroundColor: bar.color || '#E30613'
                   }}
                 />
               </div>

@@ -101,22 +101,20 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="maya-chat-title"
-          className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[420px] max-h-[82vh] h-[600px] z-50 flex flex-col bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-          style={{ boxShadow: '0 20px 50px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(235, 0, 41, 0.1)' }}
+          className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[420px] max-h-[82vh] h-[600px] z-50 flex flex-col bg-white rounded-xl shadow-2xl border border-[#E6E6E6] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         >
-          {/* Header oficial Maya Banorte */}
-          <div className="bg-banorte-gradient text-white p-4 flex items-center justify-between shadow-sm shrink-0">
+          <div className="bg-[#E30613] text-white p-3.5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-[#EB0029] rounded-full animate-pulse" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-white border-2 border-[#E30613] rounded-full" />
               </div>
 
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 id="maya-chat-title" className="font-extrabold text-sm tracking-tight text-white">Maya Banorte</h3>
+                  <h3 id="maya-chat-title" className="font-semibold text-sm tracking-tight text-white font-display">Maya Banorte</h3>
                   <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider text-white">
                     IA A2UI
                   </span>
@@ -148,14 +146,14 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
           </div>
 
           {/* Banner indicador de sincronización con la pantalla principal */}
-          <div className="bg-[#FFF5F6] border-b border-[#FECDD3] px-3.5 py-2 flex items-center justify-between text-xs text-[#EB0029] font-semibold shrink-0">
+          <div className="bg-[#FFF0F1] border-b border-[#F3C5C8] px-3.5 py-2 flex items-center justify-between text-xs text-[#E30613] font-semibold shrink-0">
             <div className="flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 shrink-0" />
               <span className="text-[11px]">Las vistas se dibujan en la <strong>pantalla principal</strong></span>
             </div>
             <button
               onClick={onToggle}
-              className="text-[10px] uppercase font-black underline hover:text-[#BA0020] flex items-center gap-0.5"
+              className="text-[10px] uppercase font-black underline hover:text-[#C10510] flex items-center gap-0.5"
             >
               <span>Ver Lienzo</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -166,10 +164,10 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
           <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#F8F9FB]">
             {messages.length === 0 && !loading && (
               <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center px-4 py-8">
-                <div className="w-12 h-12 rounded-2xl bg-[#FFF0F2] text-[#EB0029] flex items-center justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center mb-3">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-black text-gray-900 mb-1">¿En qué te ayudo?</p>
+                <p className="text-sm font-semibold text-[#1A1A1A] mb-1 font-display">¿En qué te ayudo?</p>
                 <p className="text-[11px] text-gray-500 font-medium max-w-[240px]">
                   Elige una sugerencia abajo o escribe tu petición. Maya dibujará la interfaz en el lienzo.
                 </p>
@@ -182,7 +180,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                 className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {m.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-xl bg-[#EB0029] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                  <div className="w-7 h-7 rounded-full bg-[#E30613] text-white flex items-center justify-center shrink-0 mt-0.5">
                     <Bot className="w-3.5 h-3.5" />
                   </div>
                 )}
@@ -190,7 +188,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                 <div
                   className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed shadow-xs ${
                     m.role === 'user'
-                      ? 'bg-[#EB0029] text-white font-medium rounded-tr-xs'
+                      ? 'bg-[#E30613] text-white font-medium rounded-tr-sm'
                       : 'bg-white text-gray-800 border border-gray-200/80 rounded-tl-xs'
                   }`}
                 >
@@ -204,14 +202,14 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                   <div>{m.content}</div>
 
                   {m.screen && (
-                    <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-2 text-[10px] font-bold text-[#EB0029]">
+                    <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-2 text-[10px] font-semibold text-[#E30613]">
                       <span className="flex items-center gap-1">
                         <Sparkles className="w-3 h-3" />
                         <span>Vista generada en lienzo</span>
                       </span>
                       <button
                         onClick={onToggle}
-                        className="underline hover:text-[#BA0020] cursor-pointer"
+                        className="underline hover:text-[#C10510] cursor-pointer"
                       >
                         Ver en grande
                       </button>
@@ -229,13 +227,13 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
             {/* Razonamiento Agéntico en Vivo */}
             {loading && (
-              <div className="p-3.5 rounded-2xl bg-white border border-[#FECDD3] shadow-xs text-xs space-y-2 animate-pulse">
+              <div className="p-3.5 rounded-xl bg-white border border-[#F3C5C8] text-xs space-y-2 animate-pulse">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[#EB0029] font-black text-[11px] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-[#E30613] font-semibold text-[11px] uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5 animate-spin" />
                     <span>Maya está razonando...</span>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-[#EB0029] animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-[#E30613] animate-ping" />
                 </div>
 
                 <p className="text-[11px] text-gray-700 font-medium">
@@ -246,7 +244,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
                 <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#EB0029] transition-all duration-300 rounded-full"
+                    className="h-full bg-[#E30613] transition-all duration-300 rounded-full"
                     style={{
                       width: reasoningPhase === 1 ? '33%' : reasoningPhase === 2 ? '66%' : '90%'
                     }}
@@ -266,7 +264,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                 type="button"
                 onClick={() => handlePromptClick(prompt.text)}
                 disabled={loading}
-                className="shrink-0 text-[11px] font-semibold bg-gray-50 hover:bg-[#FFF0F2] text-gray-700 hover:text-[#EB0029] border border-gray-200 hover:border-[#FECDD3] px-2.5 py-1 rounded-full transition-colors active:scale-95 disabled:opacity-40"
+                className="shrink-0 text-[11px] font-semibold bg-[#FAFAFA] hover:bg-[#FFF0F1] text-[#1A1A1A] hover:text-[#E30613] border border-[#E6E6E6] hover:border-[#F3C5C8] px-2.5 py-1 rounded-full transition-colors disabled:opacity-40"
               >
                 {prompt.label}
               </button>
@@ -283,12 +281,12 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Escribe una instrucción a Maya..."
                 disabled={loading}
-                className="w-full bg-[#F4F5F7] border border-gray-300 focus:border-[#EB0029] focus:bg-white focus:ring-2 focus:ring-[#EB0029]/20 rounded-xl px-3.5 py-2.5 pr-12 text-xs text-gray-900 placeholder-gray-500 outline-none transition-all shadow-xs"
+                className="w-full bg-[#F5F5F5] border border-[#E6E6E6] focus:border-[#E30613] focus:bg-white focus:ring-1 focus:ring-[#E30613]/20 rounded-full px-3.5 py-2.5 pr-12 text-xs text-[#1A1A1A] placeholder-[#6B6B6B] outline-none"
               />
               <button
                 type="submit"
                 disabled={loading || !inputText.trim()}
-                className="absolute right-1.5 p-2 rounded-lg bg-[#EB0029] hover:bg-[#D40024] text-white disabled:opacity-40 transition-all shadow-xs active:scale-95"
+                className="absolute right-1.5 p-2 rounded-full bg-[#E30613] hover:bg-[#C10510] text-white disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
@@ -296,7 +294,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
             <div className="flex items-center justify-between text-[9px] text-gray-400 mt-2 px-1 font-medium">
               <span className="flex items-center gap-1">
-                <Shield className="w-2.5 h-2.5 text-[#EB0029]" />
+                <Shield className="w-2.5 h-2.5 text-[#E30613]" />
                 <span>Ollama · NLP + A2UI</span>
               </span>
               <span>Lienzo A2UI Activo</span>
@@ -311,13 +309,13 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
         {!isOpen && showTooltip && (
           <div
             onClick={onToggle}
-            className="hidden sm:flex items-center gap-2.5 bg-white text-gray-900 px-3.5 py-2.5 rounded-2xl shadow-xl border border-gray-200 cursor-pointer hover:border-[#EB0029] transition-all group animate-in fade-in slide-in-from-right-4 duration-300 max-w-xs"
+            className="hidden sm:flex items-center gap-2.5 bg-white text-[#1A1A1A] px-3.5 py-2.5 rounded-xl shadow-xl border border-[#E6E6E6] cursor-pointer hover:border-[#E30613] transition-all group animate-in fade-in slide-in-from-right-4 duration-300 max-w-xs"
           >
-            <div className="w-6 h-6 rounded-lg bg-[#FFF0F2] text-[#EB0029] flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-gray-900 group-hover:text-[#EB0029] transition-colors flex items-center gap-1">
+              <div className="text-xs font-semibold text-[#1A1A1A] group-hover:text-[#E30613] transition-colors flex items-center gap-1">
                 <span>Maya Banorte</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               </div>
@@ -371,7 +369,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
             {/* Badge de mensajes / estado en la esquina de la burbuja */}
             {!isOpen && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-[#EB0029] border-2 border-[#EB0029] text-[10px] font-black flex items-center justify-center shadow-md">
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-[#E30613] border-2 border-[#E30613] text-[10px] font-semibold flex items-center justify-center shadow-md">
                 {messages.length > 0 ? messages.length : '1'}
               </span>
             )}

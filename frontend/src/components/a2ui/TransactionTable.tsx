@@ -49,7 +49,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           <div className="text-2xl font-black text-gray-900 tracking-tight">
             ${totalExpenses.toLocaleString('es-MX')} <span className="text-xs font-normal text-gray-500">MXN</span>
           </div>
-          <span className="text-[10px] text-[#EB0029] font-bold mt-1 block">
+          <span className="text-[10px] text-[#E30613] font-bold mt-1 block">
             Corte: 18 Septiembre 2026
           </span>
         </div>
@@ -71,7 +71,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-[#F8F9FB]">
           <span className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
-            <Receipt className="w-3.5 h-3.5 text-[#EB0029]" /> Movimientos Registrados
+            <Receipt className="w-3.5 h-3.5 text-[#E30613]" /> Movimientos Registrados
           </span>
           <span className="text-[11px] text-gray-500 font-medium">
             {transactions.length} operaciones
@@ -104,7 +104,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   <div className={`text-sm sm:text-base font-black flex items-center justify-end gap-1 ${isExpense ? 'text-gray-900' : 'text-emerald-700'}`}>
                     {isExpense ? (
                       <>
-                        <span className="text-[#EB0029] font-bold">-</span>
+                        <span className="text-[#E30613] font-bold">-</span>
                         ${t.amount.toLocaleString('es-MX')}
                       </>
                     ) : (

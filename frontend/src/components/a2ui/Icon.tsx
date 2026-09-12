@@ -53,7 +53,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 const TONE_CLASS: Record<string, string> = {
-  primary: 'text-[#EB0029] bg-[#FFF5F6] border-[#FECDD3]',
+  primary: 'text-[#E30613] bg-[#FFF0F1] border-[#F3C5C8]',
   success: 'text-emerald-700 bg-emerald-50 border-emerald-200',
   warning: 'text-amber-700 bg-amber-50 border-amber-200',
   danger: 'text-red-700 bg-red-50 border-red-200',

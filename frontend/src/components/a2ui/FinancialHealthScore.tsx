@@ -21,7 +21,7 @@ export const FinancialHealthScore: React.FC<FinancialHealthScoreProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold uppercase tracking-wider">
-              <HeartPulse className="w-3.5 h-3.5 text-[#EB0029]" />
+              <HeartPulse className="w-3.5 h-3.5 text-[#E30613]" />
               <span>Score Crediticio & Buró Banorte</span>
             </div>
             <div className="flex items-baseline gap-2.5 mt-1">
@@ -45,7 +45,7 @@ export const FinancialHealthScore: React.FC<FinancialHealthScoreProps> = ({
           </div>
           <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-gray-200">
             <div
-              className="bg-gradient-to-r from-emerald-500 via-amber-500 to-[#EB0029] h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-emerald-500 via-amber-500 to-[#E30613] h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.min(dti, 100)}%` }}
             />
           </div>

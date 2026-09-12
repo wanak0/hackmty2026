@@ -10,8 +10,8 @@ export const HeaderBadge: React.FC<HeaderBadgeProps> = ({ tag, title }) => {
   return (
     <div className="mb-5 pb-3 border-b border-gray-100">
       <div className="flex items-center gap-2 mb-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F2] border border-[#FECDD3] text-[#EB0029] text-[11px] font-bold tracking-wider uppercase shadow-xs">
-          <Sparkles className="w-3.5 h-3.5 text-[#EB0029]" />
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F1] border border-[#F3C5C8] text-[#E30613] text-[11px] font-bold tracking-wider uppercase shadow-xs">
+          <Sparkles className="w-3.5 h-3.5 text-[#E30613]" />
           {tag}
         </span>
         <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1">

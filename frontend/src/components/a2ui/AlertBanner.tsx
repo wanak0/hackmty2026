@@ -24,8 +24,8 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
         };
       default:
         return {
-          container: 'bg-[#FFF0F2] border-[#FECDD3] text-[#900018]',
-          icon: <Info className="w-4 h-4 text-[#EB0029] shrink-0 mt-0.5" />
+          container: 'bg-[#FFF0F1] border-[#F3C5C8] text-[#900018]',
+          icon: <Info className="w-4 h-4 text-[#E30613] shrink-0 mt-0.5" />
         };
     }
   };

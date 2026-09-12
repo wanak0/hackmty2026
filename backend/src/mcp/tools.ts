@@ -581,7 +581,7 @@ export function getUiKit(userId: string, focus: string = 'auto') {
       color: undefined as string | undefined
     })
   );
-  const palette = ['#EB0029', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#64748B'];
+  const palette = ['#E30613', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#64748B'];
   categoryEntries.forEach((e, i) => {
     e.color = palette[i % palette.length];
   });
@@ -615,7 +615,7 @@ export function getUiKit(userId: string, focus: string = 'auto') {
         orientation: 'horizontal',
         bars: [
           { label: 'Cheques', value: checking, color: '#10B981', icon: 'wallet' },
-          { label: 'Deuda TDC', value: debt, color: '#EB0029', icon: 'credit-card' },
+          { label: 'Deuda TDC', value: debt, color: '#E30613', icon: 'credit-card' },
           {
             label: 'Disponible TDC',
             value: Math.max(0, limit - debt),
@@ -647,7 +647,7 @@ export function getUiKit(userId: string, focus: string = 'auto') {
             bars: debtSim.options.map((o: any) => ({
               label: `${o.months}m`,
               value: o.monthlyPayment,
-              color: o.recommended ? '#EB0029' : '#94A3B8',
+              color: o.recommended ? '#E30613' : '#94A3B8',
               highlight: !!o.recommended
             }))
           }
@@ -724,7 +724,7 @@ export function getUiKit(userId: string, focus: string = 'auto') {
     focus: focus || 'auto',
     icons: UI_ICON_CATALOG,
     palette: {
-      primary: '#EB0029',
+      primary: '#E30613',
       success: '#10B981',
       warning: '#F59E0B',
       info: '#3B82F6',

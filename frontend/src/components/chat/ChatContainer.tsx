@@ -233,7 +233,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
       : undefined;
 
   return (
-    <div className="min-h-screen bg-[#F2F4F8] text-[#1E242D] flex flex-col selection:bg-[#EB0029] selection:text-white">
+    <div className="min-h-screen bg-[#F5F5F5] text-[#1A1A1A] flex flex-col selection:bg-[#E30613] selection:text-white">
       {toast && (
         <div
           role="status"
@@ -247,56 +247,44 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
         </div>
       )}
       {/* Topbar Oficial Banorte */}
-      <header className="bg-[#EB0029] text-white shadow-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+      <header className="bg-[#E30613] text-white sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               onClick={onBackToLanding}
-              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors flex items-center gap-1.5 text-xs font-bold"
+              className="w-9 h-9 rounded-full hover:bg-white/15 text-white transition-colors flex items-center justify-center"
+              title="Regresar"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Landing</span>
+              <ArrowLeft className="w-5 h-5" />
             </button>
-
-            <div className="flex items-center gap-3">
-              <BanorteLogo size="sm" variant="white" />
-              <span className="text-white/40 text-xs hidden sm:inline">|</span>
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-[11px] font-bold text-white">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Token Activo · MCP Core</span>
-              </div>
-            </div>
+            <BanorteLogo size="sm" variant="white" />
           </div>
 
-          {/* Acciones y Perfil */}
-          <div className="flex items-center gap-3">
-            {/* Botón directo para abrir el chat de Maya */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsChatModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all shadow-xs active:scale-95"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-all"
               title="Abrir chat con Maya"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Asistente Maya</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              <span className="hidden sm:inline">Maya</span>
             </button>
 
-            <div className="flex items-center gap-2 bg-white/15 border border-white/20 px-3 py-1.5 rounded-xl text-xs">
-              <div className="w-6 h-6 rounded-full bg-white text-[#EB0029] font-black text-xs flex items-center justify-center">
+            <div className="flex items-center gap-2 px-2 py-1 text-xs">
+              <div className="w-7 h-7 rounded-full bg-white text-[#E30613] font-semibold text-xs flex items-center justify-center">
                 C
               </div>
               <div className="hidden sm:block text-left text-white">
-                <div className="font-bold leading-tight">Carlos Mendoza</div>
+                <div className="font-semibold leading-tight">Carlos Mendoza</div>
               </div>
             </div>
 
             <button
               onClick={handleReset}
               title="Reiniciar datos de demo a valores iniciales"
-              className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+              className="w-9 h-9 rounded-full hover:bg-white/15 text-white flex items-center justify-center transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Reiniciar</span>
+              <RotateCcw className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -304,104 +292,50 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
 
       <div className="flex-1 flex flex-col pb-24">
         {/* Resumen Superior de Cuentas Banorte */}
-        <section className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6 shadow-xs">
+        <section className="bg-white border-b border-[#E6E6E6]">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">
-                    ¡Hola, Carlos! 👋
-                  </h1>
-                  <span className="text-[10px] bg-[#FFF0F2] text-[#EB0029] border border-[#FECDD3] px-2 py-0.5 rounded-full font-bold uppercase">
-                    Banca Móvil Banorte · Protocolo A2UI
-                  </span>
-                </div>
-              </div>
-
-              <div className="text-xs text-gray-500 font-medium flex items-center gap-2">
-                <span>Core Bancario conectado vía <span className="font-bold text-gray-700">MCP SDK</span></span>
-                <span className="text-gray-300">•</span>
-                <span className="text-[#EB0029] font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  NLP + A2UI · Ollama
-                </span>
-              </div>
+            <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
+              <h1 className="text-base font-semibold text-[#1A1A1A] font-display">
+                Hola, Carlos
+              </h1>
+              <span className="text-[11px] text-[#6B6B6B] font-medium">Banorte Móvil</span>
             </div>
 
-            {/* Cards de Cuentas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {/* Tarjeta de Crédito */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FFFBF0] via-white to-white border border-amber-300 shadow-xs">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider block">
-                        Tarjeta de Crédito
-                      </span>
-                      <span className="text-xs font-black text-gray-900">Banorte Por Ti Oro (•••• 4821)</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-[#EB0029]">
-                    REVOLVENTE
-                  </span>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-[#F0F0F0] hover:bg-[#FAFAFA] text-left"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center shrink-0">
+                  <CreditCard className="w-4 h-4" />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                  <div>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold block">Deuda Actual</span>
-                    <div className="text-lg font-black text-[#EB0029]">
-                      ${clientStatus?.totalDebt?.toLocaleString('es-MX') || '18,400'}{' '}
-                      <span className="text-xs font-normal text-gray-500">MXN</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold block">Límite de Crédito</span>
-                    <div className="text-lg font-bold text-gray-800">
-                      $35,000 <span className="text-xs font-normal text-gray-500">MXN</span>
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[#1A1A1A]">Banorte Por Ti Oro ···· 4821</div>
+                  <div className="text-[11px] text-[#6B6B6B]">
+                    Deuda ${clientStatus?.totalDebt?.toLocaleString('es-MX') || '18,400'} MXN
                   </div>
                 </div>
               </div>
+              <span className="text-[#E30613] text-lg leading-none">›</span>
+            </button>
 
-              {/* Cuenta Débito */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/50 via-white to-white border border-emerald-300 shadow-xs">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                      <Wallet className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block">
-                        Cuenta de Débito
-                      </span>
-                      <span className="text-xs font-black text-gray-900">Cuenta Enlace Digital (•••• 4092)</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    ACTIVA
-                  </span>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-[#F0F0F0] hover:bg-[#FAFAFA] text-left"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-[#F5F5F5] text-[#1A1A1A] flex items-center justify-center shrink-0">
+                  <Wallet className="w-4 h-4" />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                  <div>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold block">Saldo Disponible</span>
-                    <div className="text-lg font-black text-emerald-700">
-                      ${Number(checkingBalance).toLocaleString('es-MX')}{' '}
-                      <span className="text-xs font-normal text-gray-500">MXN</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold block">CLABE</span>
-                    <div className="text-xs font-mono font-bold text-gray-700 mt-1">
-                      072580012345678901
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[#1A1A1A]">Enlace Digital ···· 4092</div>
+                  <div className="text-[11px] text-[#6B6B6B]">
+                    Disponible ${Number(checkingBalance).toLocaleString('es-MX')} MXN
                   </div>
                 </div>
               </div>
-            </div>
+              <span className="text-[#E30613] text-lg leading-none">›</span>
+            </button>
           </div>
         </section>
 
@@ -416,7 +350,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                 <Layers className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-[#1A1A1A] tracking-tight flex items-center gap-2 font-display">
                   <span>Lienzo Generativo A2UI</span>
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
                     En Vivo
@@ -431,17 +365,17 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
 
           {/* Indicador de Razonamiento Agéntico en Vivo sobre el Lienzo */}
           {loading && (
-            <div className="mb-6 p-4 rounded-2xl bg-white border border-[#FECDD3] shadow-sm flex items-center justify-between animate-pulse">
+            <div className="mb-6 p-4 rounded-xl bg-white border border-[#F3C5C8] flex items-center justify-between animate-pulse">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#FFF0F2] flex items-center justify-center text-[#EB0029]">
+                <div className="w-10 h-10 rounded-full bg-[#FFF0F1] flex items-center justify-center text-[#E30613]">
                   <Sparkles className="w-5 h-5 animate-spin" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-[#EB0029]">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-[#E30613]">
                       Generando interfaz interactiva en vivo
                     </span>
-                    <span className="w-2 h-2 rounded-full bg-[#EB0029] animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-[#E30613] animate-ping" />
                   </div>
                   <div className="text-xs font-bold text-gray-900 mt-0.5">
                     {reasoningPhase === 1 && 'Paso 1: Consultando Core Bancario Banorte (MCP Tools)...'}
@@ -453,17 +387,17 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
               <div className="flex items-center gap-1.5">
                 <span
                   className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 1 ? 'bg-[#EB0029]' : 'bg-gray-200'
+                    reasoningPhase >= 1 ? 'bg-[#E30613]' : 'bg-gray-200'
                   }`}
                 />
                 <span
                   className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 2 ? 'bg-[#EB0029]' : 'bg-gray-200'
+                    reasoningPhase >= 2 ? 'bg-[#E30613]' : 'bg-gray-200'
                   }`}
                 />
                 <span
                   className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    reasoningPhase >= 3 ? 'bg-[#EB0029]' : 'bg-gray-200'
+                    reasoningPhase >= 3 ? 'bg-[#E30613]' : 'bg-gray-200'
                   }`}
                 />
               </div>
@@ -481,19 +415,19 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                 />
               </div>
             ) : (
-              <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center p-8 bg-white rounded-3xl border border-dashed border-gray-300 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-[#FFF0F2] text-[#EB0029] flex items-center justify-center mb-4 banorte-subtle-glow">
-                  <Sparkles className="w-8 h-8" />
+              <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center p-8 bg-white rounded-xl border border-[#E6E6E6] text-center">
+                <div className="w-14 h-14 rounded-full bg-[#FFF0F1] text-[#E30613] flex items-center justify-center mb-4">
+                  <Sparkles className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-black text-gray-900 mb-1">
-                  Lienzo preparado para diseñar interfaces
+                <h3 className="text-lg font-semibold text-[#1A1A1A] mb-1 font-display">
+                  Elige una operación
                 </h3>
-                <p className="text-xs text-gray-500 max-w-md mb-4">
-                  Abre Maya y elige una sugerencia para generar la primera pantalla A2UI.
+                <p className="text-xs text-[#6B6B6B] max-w-md mb-4">
+                  Abre Maya y pulsa una sugerencia para generar la primera pantalla.
                 </p>
                 <button
                   onClick={() => setIsChatModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-banorte-gradient text-white text-xs font-extrabold shadow-md hover:opacity-95 transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-full bg-[#E30613] text-white text-xs font-semibold hover:bg-[#C10510] transition-all flex items-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Abrir Asistente Maya</span>
@@ -505,7 +439,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
           {/* Footer discreto del lienzo */}
           <div className="mt-8 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-400 gap-2">
             <div className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-[#EB0029]" />
+              <Shield className="w-3.5 h-3.5 text-[#E30613]" />
               <span>Protocolo A2UI Pure Canvas · Banca Digital Banorte</span>
             </div>
             <span>Haz clic en la burbuja flotante para dialogar con Maya</span>
