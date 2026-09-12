@@ -1,5 +1,14 @@
-import React from 'react';
-import { ShoppingBag, Coffee, Zap, Car, ArrowUpRight, ArrowDownRight, Tag, Receipt } from 'lucide-react';
+import React from "react";
+import {
+  ShoppingBag,
+  Coffee,
+  Zap,
+  Car,
+  ArrowUpRight,
+  ArrowDownRight,
+  Tag,
+  Receipt,
+} from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -7,7 +16,7 @@ interface Transaction {
   category: string;
   amount: number;
   date: string;
-  type: 'EXPENSE' | 'INCOME';
+  type: "EXPENSE" | "INCOME";
 }
 
 interface TransactionTableProps {
@@ -19,19 +28,19 @@ interface TransactionTableProps {
 export const TransactionTable: React.FC<TransactionTableProps> = ({
   transactions,
   totalExpenses,
-  topCategory
+  topCategory,
 }) => {
   const getIcon = (category: string) => {
     switch (category) {
-      case 'Despensa':
+      case "Despensa":
         return <ShoppingBag className="w-4 h-4 text-amber-600" />;
-      case 'Servicios':
+      case "Servicios":
         return <Zap className="w-4 h-4 text-blue-600" />;
-      case 'Transporte':
+      case "Transporte":
         return <Car className="w-4 h-4 text-rose-600" />;
-      case 'Transferencias':
+      case "Transferencias":
         return <ArrowUpRight className="w-4 h-4 text-purple-600" />;
-      case 'Ingreso':
+      case "Ingreso":
         return <ArrowDownRight className="w-4 h-4 text-emerald-600" />;
       default:
         return <Coffee className="w-4 h-4 text-indigo-600" />;
@@ -47,10 +56,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             Gasto Acumulado en el Periodo
           </span>
           <div className="text-2xl font-black text-gray-900 tracking-tight">
-            ${totalExpenses.toLocaleString('es-MX')} <span className="text-xs font-normal text-gray-500">MXN</span>
+            ${totalExpenses.toLocaleString("es-MX")}{" "}
+            <span className="text-xs font-normal text-gray-500">MXN</span>
           </div>
           <span className="text-[10px] text-[#EB0029] font-bold mt-1 block">
-            Corte: 18 Septiembre 2026
+            Periodo de los movimientos consultados
           </span>
         </div>
 
@@ -62,7 +72,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             <Tag className="w-4 h-4" /> {topCategory}
           </div>
           <span className="text-[10px] text-gray-500 font-medium mt-1 block">
-            Representa ~38% de tus salidas
+            Categoría con mayor gasto en la consulta
           </span>
         </div>
       </div>
@@ -71,7 +81,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-[#F8F9FB]">
           <span className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
-            <Receipt className="w-3.5 h-3.5 text-[#EB0029]" /> Movimientos Registrados
+            <Receipt className="w-3.5 h-3.5 text-[#EB0029]" /> Movimientos
+            Registrados
           </span>
           <span className="text-[11px] text-gray-500 font-medium">
             {transactions.length} operaciones
@@ -80,16 +91,21 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
         <div className="divide-y divide-gray-100">
           {transactions.map((t) => {
-            const isExpense = t.type === 'EXPENSE';
+            const isExpense = t.type === "EXPENSE";
 
             return (
-              <div key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <div
+                key={t.id}
+                className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
                 <div className="flex items-center gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
                     {getIcon(t.category)}
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-gray-900">{t.concept}</div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {t.concept}
+                    </div>
                     <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 font-medium">
                       <span>{t.date}</span>
                       <span>·</span>
@@ -101,21 +117,23 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <div className={`text-sm sm:text-base font-black flex items-center justify-end gap-1 ${isExpense ? 'text-gray-900' : 'text-emerald-700'}`}>
+                  <div
+                    className={`text-sm sm:text-base font-black flex items-center justify-end gap-1 ${isExpense ? "text-gray-900" : "text-emerald-700"}`}
+                  >
                     {isExpense ? (
                       <>
-                        <span className="text-[#EB0029] font-bold">-</span>
-                        ${t.amount.toLocaleString('es-MX')}
+                        <span className="text-[#EB0029] font-bold">-</span>$
+                        {t.amount.toLocaleString("es-MX")}
                       </>
                     ) : (
                       <>
-                        <span className="text-emerald-700 font-bold">+</span>
-                        ${t.amount.toLocaleString('es-MX')}
+                        <span className="text-emerald-700 font-bold">+</span>$
+                        {t.amount.toLocaleString("es-MX")}
                       </>
                     )}
                   </div>
                   <span className="text-[10px] text-gray-500 block font-medium">
-                    {isExpense ? 'Cargo aprobado' : 'Depósito SPEI'}
+                    {isExpense ? "Cargo aprobado" : "Ingreso registrado"}
                   </span>
                 </div>
               </div>
@@ -126,5 +144,3 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     </div>
   );
 };
-
-

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import React from "react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 interface QuickSuggestionsProps {
   suggestions: string[];
@@ -8,12 +8,13 @@ interface QuickSuggestionsProps {
 
 export const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
   suggestions,
-  onSelectSuggestion
+  onSelectSuggestion,
 }) => {
   return (
     <div className="space-y-2.5 mb-4">
       <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block flex items-center gap-1.5">
-        <Sparkles className="w-3.5 h-3.5 text-[#EB0029]" /> Consultas sugeridas por Maya Banorte:
+        <Sparkles className="w-3.5 h-3.5 text-[#EB0029]" /> Consultas sugeridas
+        por Maya Banorte:
       </span>
       <div className="flex flex-col gap-2">
         {suggestions.map((suggestion, idx) => (
@@ -30,5 +31,3 @@ export const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
     </div>
   );
 };
-
-

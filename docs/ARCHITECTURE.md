@@ -19,15 +19,19 @@ flowchart TD
 
     subgraph Backend ["Orquestador Backend (Node.js / TypeScript)"]
         API["API Gateway (/api/chat)"]
-        LLM["Google Gemini (Model: gemini-1.5-flash)"]
+        LLM["Ollama Cloud (Gemma 4:3.1b) + Gemini fallback"]
+        DetNLP["Fallback NLP determinístico"]
         A2UIProtocol["Traductor de Intenciones a Schema A2UI"]
+        Registry["MCP Registry callMcpTool()"]
     end
 
     subgraph MCP ["Capa MCP (Model Context Protocol)"]
-        MCPServer["Servidor MCP (@modelcontextprotocol/sdk)"]
-        ToolStatus["Tool: get_client_financial_status"]
-        ToolSimulate["Tool: simulate_debt_restructure"]
-        ToolApply["Tool: apply_debt_restructuring"]
+        MCPServer["Servidor MCP stdio (@modelcontextprotocol/sdk)"]
+        ToolStatus["get_client_financial_status"]
+        ToolSimulate["simulate_debt_restructure"]
+        ToolApply["apply_debt_restructuring"]
+        ToolInvest["apply_investment / simulate_investment"]
+        ToolSpei["execute_transfer"]
     end
 
     subgraph CoreBancario ["Datos Sintéticos"]
@@ -37,10 +41,14 @@ flowchart TD
     UserInput -->|"POST /api/chat"| API
     ActionDispatch -->|"POST /api/chat (action payload)"| API
     API --> LLM
-    LLM <-->|"Tool Calling (MCP)"| MCPServer
-    MCPServer --> ToolStatus & ToolSimulate & ToolApply
-    ToolStatus & ToolSimulate & ToolApply <--> MockDB
+    API --> DetNLP
+    LLM --> Registry
+    DetNLP --> Registry
+    Registry --> ToolStatus & ToolSimulate & ToolApply & ToolInvest & ToolSpei
+    MCPServer --> Registry
+    ToolStatus & ToolSimulate & ToolApply & ToolInvest & ToolSpei <--> MockDB
     LLM -->|"Genera JSON A2UI"| A2UIProtocol
+    DetNLP -->|"Pantalla A2UI garantizada"| A2UIProtocol
     A2UIProtocol -->|"Response payload"| DynamicView
 ```
 
@@ -51,7 +59,8 @@ flowchart TD
 | Componente | Elección | Justificación del Trade-off |
 |---|---|---|
 | **Frontend** | **React 18 + Vite + TypeScript + TailwindCSS** | Máxima velocidad de iteración, sin complejidad de SSR innecesaria para un dashboard interactivo de tiempo real. Compatibilidad total con tipado estricto para esquemas JSON de A2UI. |
-| **LLM** | **Google Gemini (1.5 Flash / Pro)** | Ventana de contexto amplia, excelente soporte para llamadas a funciones estructuradas (Function Calling) y generación de esquemas JSON estrictos sin alucinaciones de formato. |
-| **Capa de Herramientas** | **MCP (@modelcontextprotocol/sdk)** | Cumplimiento no negociable del reto. Permite desacoplar la lógica de negocio bancaria del agente, permitiendo que cualquier modelo consuma los servicios de forma estandarizada. |
+| **LLM primario** | **Ollama Cloud (Gemma 4:3.1b)** | Structured JSON output, latencia aceptable para demo, y fallback a Gemini / NLP determinístico si no hay clave o red. |
+| **Capa de Herramientas** | **MCP registry + `@modelcontextprotocol/sdk`** | Cumplimiento del reto: el orquestador HTTP y el servidor MCP stdio comparten el mismo `callMcpTool` / `MCP_TOOL_DEFINITIONS`. El hot path del chat invoca tools por nombre MCP, no imports ad-hoc. |
 | **Protocolo de Interfaz** | **A2UI Declarativo (JSON Schema)** | En lugar de pedirle al LLM que genere código HTML/React arbitrario (lo cual es inseguro y propenso a errores de renderizado), el LLM genera una **especificación declarativa de componentes pre-validados**, garantizando consistencia de diseño Banorte y seguridad contra inyección de código. |
+| **Resiliencia de demo** | **Fallback NLP + MCP** | Si Ollama/Gemini fallan, un clasificador de intención arma pantallas A2UI reales consultando el core vía MCP — la demo ante jueces no depende de la red. |
 | **Persistencia de Datos** | **Almacén Sintético JSON con Estado en Memoria** | Elimina dependencias de bases de datos externas pesadas durante el hackathon, permitiendo reiniciar el estado de la demo al instante para los jueces. |

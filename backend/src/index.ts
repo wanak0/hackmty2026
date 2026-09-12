@@ -3,23 +3,31 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { processUserMessage } from './agent/ollama.js';
 import { getClientFinancialStatus, resetBankData, loadBankData } from './mcp/tools.js';
+import { MCP_TOOL_DEFINITIONS } from './mcp/registry.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NLP_MODEL = 'gemma4:31b';
+const A2UI_MODEL = 'gemma4:31b';
 
 app.use(cors());
 app.use(express.json());
 
-// Endpoint de Salud y Configuración de IA
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Banorte A2UI Orchestrator & MCP Backend',
-    version: '2.0.0 (Pure A2UI)',
+    version: '2.1.0 (Pure A2UI pipeline)',
     engine: 'Ollama Cloud',
-    model: process.env.OLLAMA_MODEL || 'gemma4:31b'
+    nlpModel: process.env.OLLAMA_MODEL || NLP_MODEL,
+    a2uiModel: process.env.A2UI_MODEL || A2UI_MODEL,
+    mcp: {
+      tools: MCP_TOOL_DEFINITIONS.length,
+      registry: 'in-process + stdio server'
+    },
+    pipeline: 'NLP → MCP → A2UI'
   });
 });
 
@@ -27,12 +35,15 @@ app.get('/api/config', (req, res) => {
   res.json({
     provider: 'Ollama Cloud',
     host: process.env.OLLAMA_HOST || 'https://ollama.com',
-    model: process.env.OLLAMA_MODEL || 'gemma4:31b',
-    hasApiKey: Boolean(process.env.OLLAMA_API_KEY && process.env.OLLAMA_API_KEY !== 'tu_clave_de_ollama_aqui')
+    nlpModel: process.env.OLLAMA_MODEL || NLP_MODEL,
+    a2uiModel: process.env.A2UI_MODEL || A2UI_MODEL,
+    hasApiKey: Boolean(
+      process.env.OLLAMA_API_KEY && !process.env.OLLAMA_API_KEY.includes('tu_clave')
+    ),
+    mcpTools: MCP_TOOL_DEFINITIONS.map((t) => t.name)
   });
 });
 
-// Endpoint principal: Chat y A2UI Loop con soporte multi-turno
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, context, history } = req.body;
@@ -47,7 +58,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Endpoint para consultar estado bancario en tiempo real
 app.get('/api/user/:id/status', (req, res) => {
   try {
     const status = getClientFinancialStatus(req.params.id);
@@ -57,16 +67,17 @@ app.get('/api/user/:id/status', (req, res) => {
   }
 });
 
-// Endpoint para ver la base de datos completa (inspección de jueces)
 app.get('/api/debug/database', (req, res) => {
   res.json(loadBankData());
 });
 
-// Endpoint para reiniciar la demo a su estado inicial
 app.post('/api/reset', (req, res) => {
   try {
     resetBankData();
-    res.json({ success: true, message: 'Base de datos bancaria reiniciada a valores de fábrica para la demo.' });
+    res.json({
+      success: true,
+      message: 'Base de datos bancaria reiniciada a valores de fábrica para la demo.'
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
