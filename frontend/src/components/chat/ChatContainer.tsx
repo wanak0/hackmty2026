@@ -396,9 +396,6 @@ export function ChatContainer({
               <ArrowRight size={16} />
             </button>
           </div>
-          <div className="demo-label">
-            <span /> Estás en una demostración
-          </div>
         </div>
         <div className="workspace-layout">
           <div className="bank-content">
