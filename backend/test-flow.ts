@@ -1,5 +1,5 @@
 import { getClientFinancialStatus, simulateDebtRestructure, applyDebtRestructuring, resetBankData, loadBankData } from './src/mcp/tools.js';
-import { processUserMessage } from './src/agent/gemini.js';
+import { processUserMessage } from './src/agent/ollama.js';
 
 async function runVerification() {
   console.log('🧪 INICIANDO VERIFICACIÓN DEL FLUJO DEL HACKATHON...\n');

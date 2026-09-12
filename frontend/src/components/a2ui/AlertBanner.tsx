@@ -14,18 +14,18 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
     switch (variant) {
       case 'warning':
         return {
-          container: 'bg-amber-950/30 border-amber-500/40 text-amber-200',
-          icon: <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          container: 'bg-amber-50 border-amber-200 text-amber-900',
+          icon: <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
         };
       case 'success':
         return {
-          container: 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200',
-          icon: <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          container: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+          icon: <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
         };
       default:
         return {
-          container: 'bg-blue-950/30 border-blue-500/40 text-blue-200',
-          icon: <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+          container: 'bg-[#FFF0F2] border-[#FECDD3] text-[#900018]',
+          icon: <Info className="w-4 h-4 text-[#EB0029] shrink-0 mt-0.5" />
         };
     }
   };
@@ -33,9 +33,11 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
   const style = getStyles();
 
   return (
-    <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs leading-relaxed mb-4 shadow-sm ${style.container}`}>
+    <div className={`p-4 rounded-2xl border flex items-start gap-3 text-xs leading-relaxed mb-4 shadow-xs ${style.container}`}>
       {style.icon}
-      <span>{message}</span>
+      <span className="font-semibold">{message}</span>
     </div>
   );
 };
+
+

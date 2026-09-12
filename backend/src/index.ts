@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { processUserMessage } from './agent/gemini.js';
+import { processUserMessage } from './agent/ollama.js';
 import { getClientFinancialStatus, resetBankData, loadBankData } from './mcp/tools.js';
 
 dotenv.config();
@@ -12,20 +12,31 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Endpoint de Salud
+// Endpoint de Salud y Configuración de IA
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     service: 'Banorte A2UI Orchestrator & MCP Backend',
-    version: '1.0.0'
+    version: '2.0.0 (Pure A2UI)',
+    engine: 'Ollama Cloud',
+    model: process.env.OLLAMA_MODEL || 'gemma4:31b'
   });
 });
 
-// Endpoint principal: Chat y A2UI Loop
+app.get('/api/config', (req, res) => {
+  res.json({
+    provider: 'Ollama Cloud',
+    host: process.env.OLLAMA_HOST || 'https://ollama.com',
+    model: process.env.OLLAMA_MODEL || 'gemma4:31b',
+    hasApiKey: Boolean(process.env.OLLAMA_API_KEY && process.env.OLLAMA_API_KEY !== 'tu_clave_de_ollama_aqui')
+  });
+});
+
+// Endpoint principal: Chat y A2UI Loop con soporte multi-turno
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, context } = req.body;
-    const screen = await processUserMessage(message || '', context);
+    const { message, context, history } = req.body;
+    const screen = await processUserMessage(message || '', context, history);
     res.json(screen);
   } catch (error: any) {
     console.error('Error procesando mensaje en /api/chat:', error);
@@ -61,7 +72,7 @@ app.post('/api/reset', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`=========================================`);
   console.log(`🏦 BANORTE A2UI BACKEND & MCP ACTIVO`);
   console.log(`📡 URL: http://localhost:${PORT}`);

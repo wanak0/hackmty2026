@@ -4,25 +4,38 @@
 
 @layer base {
   body {
-    @apply bg-[#0b0c0e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif];
+    @apply bg-[#F2F4F8] text-[#1E242D] font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-[#EB0029] selection:text-white;
   }
 }
 
-/* Custom scrollbar */
+/* Banorte official gradients */
+.bg-banorte-gradient {
+  background: linear-gradient(135deg, #EB0029 0%, #D40024 60%, #BA0020 100%);
+}
+
+.bg-banorte-header-red {
+  background: linear-gradient(180deg, #EB0029 0%, #D80025 100%);
+}
+
+.banorte-subtle-glow {
+  box-shadow: 0 4px 20px -2px rgba(235, 0, 41, 0.12);
+}
+
+/* Clean light scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #121316;
+  background: #F2F4F8;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #EB0029;
 }

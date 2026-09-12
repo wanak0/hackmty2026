@@ -21,23 +21,25 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     <button
       disabled={loading}
       onClick={onClick}
-      className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2 shadow-md ${
+      className={`w-full py-4 px-6 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.98] ${
         isPrimary
-          ? 'bg-[#EB0029] hover:bg-[#c90022] text-white active:scale-[0.99] disabled:opacity-60'
-          : 'bg-[#181920] hover:bg-[#23242c] text-zinc-200 border border-[#2d2f3c] active:scale-[0.99]'
+          ? 'bg-[#EB0029] hover:bg-[#D40024] text-white shadow-banorte-red disabled:opacity-50'
+          : 'bg-white hover:bg-gray-50 text-gray-800 border border-gray-300'
       }`}
     >
       {loading ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin text-white" />
-          <span>Procesando en Core Bancario...</span>
+          <span>Procesando en Core Bancario Banorte...</span>
         </>
       ) : (
         <>
           <span>{label}</span>
-          {isPrimary && <ArrowRight className="w-4 h-4" />}
+          {isPrimary && <ArrowRight className="w-4 h-4 stroke-[2.5]" />}
         </>
       )}
     </button>
   );
 };
+
+

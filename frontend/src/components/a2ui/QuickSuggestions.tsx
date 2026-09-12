@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 interface QuickSuggestionsProps {
   suggestions: string[];
@@ -11,20 +11,24 @@ export const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
   onSelectSuggestion
 }) => {
   return (
-    <div className="space-y-2 mb-4">
-      <span className="text-xs font-medium text-zinc-400 block">Sugerencias rápidas para probar:</span>
+    <div className="space-y-2.5 mb-4">
+      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block flex items-center gap-1.5">
+        <Sparkles className="w-3.5 h-3.5 text-[#EB0029]" /> Consultas sugeridas por Maya Banorte:
+      </span>
       <div className="flex flex-col gap-2">
         {suggestions.map((suggestion, idx) => (
           <button
             key={idx}
             onClick={() => onSelectSuggestion(suggestion)}
-            className="w-full text-left p-3 rounded-xl bg-[#17181f] hover:bg-[#20222c] border border-[#272936] hover:border-red-500/40 text-xs text-zinc-200 hover:text-white transition-all flex items-center justify-between group"
+            className="w-full text-left p-3.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-[#EB0029] text-xs text-gray-800 hover:text-gray-900 transition-all flex items-center justify-between group shadow-xs"
           >
-            <span>"{suggestion}"</span>
-            <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" />
+            <span className="font-semibold">"{suggestion}"</span>
+            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#EB0029] group-hover:translate-x-0.5 transition-all" />
           </button>
         ))}
       </div>
     </div>
   );
 };
+
+

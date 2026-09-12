@@ -27,14 +27,21 @@ setup.bat
 
 ---
 
-## 🔑 Paso 2: Variable de Entorno (Opcional)
+## 🔑 Paso 2: Variable de Entorno (Ollama Cloud / API)
 El script de instalación creará automáticamente el archivo `backend/.env`.
-Si deseas utilizar la inteligencia artificial en vivo con Google Gemini, abre `backend/.env` y pega tu clave:
+Si deseas utilizar la inteligencia artificial generativa con **Ollama Cloud** (según [docs.ollama.com](https://docs.ollama.com/cloud)), abre `backend/.env` y coloca tu configuración:
 ```env
-GEMINI_API_KEY=tu_clave_aqui
+# Ollama Cloud (https://ollama.com/settings/keys) o instancia local/remota
+OLLAMA_HOST=https://ollama.com
+OLLAMA_API_KEY=tu_clave_de_ollama_aqui
+OLLAMA_MODEL=gemma4:3.1b
+
+# Google Gemini (opcional / fallback secundario)
+GEMINI_API_KEY=tu_clave_de_gemini_aqui
+
 PORT=3001
 ```
-> **Nota:** Si no tienes clave o no tienes internet en ese momento, **el sistema cuenta con un motor de simulación local integrado**, por lo que podrás hacer toda la demo sin problemas.
+> **Nota de Resiliencia:** Si no tienes clave o no hay conexión a internet durante la presentación, **el sistema cuenta con un motor NLP determinístico integrado con todas las herramientas bancarias MCP**, por lo que podrás hacer toda la demo ante los jueces sin riesgo de que falle.
 
 ---
 

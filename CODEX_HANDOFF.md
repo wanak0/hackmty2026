@@ -9,7 +9,7 @@
 Este proyecto fue creado para el **Reto Oficial Banorte × Tec de Monterrey (HackMTY 2026)**.
 * **El Reto:** Construir interfaces que la IA construye en tiempo real. No un chatbot con muro de texto, sino un agente generativo que traduce intenciones en pantallas interactivas (A2UI) respaldadas por el Model Context Protocol (MCP).
 * **Los 3 Pilares No Negociables:**
-  1. **LLM al Centro:** Orquestador inteligente (Google Gemini) que interpreta el lenguaje natural del usuario y diseña la UI en formato declarativo JSON.
+  1. **LLM al Centro:** Orquestador inteligente impulsado por **Ollama Cloud** (usando modelo **Gemma 4:3.1b** con salida estructurada JSON según [docs.ollama.com](https://docs.ollama.com/cloud)) y Google Gemini como alternativa, que interpreta el lenguaje natural y diseña la UI en formato declarativo JSON.
   2. **MCP (Model Context Protocol) en TypeScript:** Expone al modelo herramientas seguras para consultar tarjetas, saldos, movimientos y ejecutar transacciones en el core bancario (`@modelcontextprotocol/sdk`).
   3. **A2UI (Agent-to-UI):** La interfaz viaja hacia el cliente React como un schema JSON y renderiza componentes vivos. Toda interacción en la UI vuelve al agente como contexto para **cerrar el ciclo de feedback**.
 
@@ -26,20 +26,21 @@ hackmty2026/
 ├── docs/
 │   ├── ARCHITECTURE.md        # Diagrama de arquitectura Mermaid y justificaciones
 │   └── DATA_DICTIONARY.md     # Especificación de datos sintéticos
-├── backend/                   # Node.js + Express + TypeScript + MCP + Gemini
+├── backend/                   # Node.js + Express + TypeScript + MCP + Ollama Cloud
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── .env.example
 │   ├── test-flow.ts           # Script de pruebas automatizadas del flujo A2UI
 │   └── src/
-│       ├── index.ts           # Servidor HTTP Express (/api/chat, /api/reset, /api/user/:id)
+│       ├── index.ts           # Servidor HTTP Express (/api/chat, /api/health, /api/config, /api/reset)
 │       ├── data/mock_bank.json# Base de datos sintética local (cuentas, tarjetas, deudas)
 │       ├── mcp/
 │       │   ├── tools.ts       # Funciones del core bancario (consultas, amortización, SPEI)
 │       │   └── server.ts      # Servidor MCP formal con @modelcontextprotocol/sdk
 │       └── agent/
 │           ├── prompts.ts     # System Prompt generativo con gramática de componentes A2UI
-│           └── gemini.ts      # Orquestador con fallback de modelos (gemini-flash-latest, 3.5)
+│           ├── ollama.ts      # Orquestador con Ollama Cloud (Gemma 4:3.1b), structured output y fallback
+│           └── gemini.ts      # Orquestador alternativo con Google Gemini
 └── frontend/                  # React 18 + Vite + TypeScript + Tailwind CSS
     ├── package.json
     ├── tsconfig.json
