@@ -23,6 +23,11 @@ import {
 import { A2UIScreen, ChatMessage } from "../../types/a2ui";
 import { A2UIRenderer } from "../a2ui/A2UIRenderer";
 import { BanorteLogo } from "../common/BanorteLogo";
+import {
+  parseRestoreIntent,
+  resolveRestoreIndex,
+  snapshotScreen,
+} from "../../lib/screenHistory";
 
 interface ClientStatus {
   user: { name: string; checkingBalance: number };
@@ -94,6 +99,7 @@ export function ChatContainer({
   const [clientStatus, setClientStatus] = useState<ClientStatus | null>(null);
   const [statusError, setStatusError] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showAmounts, setShowAmounts] = useState(true);
@@ -157,15 +163,95 @@ export function ChatContainer({
     controller.current = requestController;
     const timeout = window.setTimeout(() => requestController.abort(), 180000);
     const history = messages.map(({ role, content }) => ({ role, content }));
-    setMessages((previous) => [
-      ...previous,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: displayMessage,
-        timestamp: Date.now(),
-      },
-    ]);
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: displayMessage,
+      timestamp: Date.now(),
+    };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+
+    const restore = parseRestoreIntent(displayMessage);
+    if (restore) {
+      const target = resolveRestoreIndex(updatedMessages, activeIndex, restore);
+      const stored = target != null ? updatedMessages[target]?.screen : undefined;
+      if (target == null || !stored) {
+        setError("Aún no hay una pantalla anterior a la que regresar.");
+        busy.current = false;
+        setLoading(false);
+        clearTimeout(timeout);
+        return;
+      }
+      try {
+        if (restore.mode === "snapshot") {
+          const exact = snapshotScreen(stored);
+          setScreen(exact);
+          setActiveIndex(target);
+          setMessages([
+            ...updatedMessages,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: exact.assistantMessage,
+              screen: exact,
+              timestamp: Date.now(),
+            },
+          ]);
+        } else {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: requestController.signal,
+            body: JSON.stringify({
+              message: "RESTORE_SCREEN",
+              context: {
+                action: "RESTORE_SCREEN",
+                mode: "fresh",
+                screen: stored,
+                userId: "usr_carlos_01",
+              },
+              history,
+            }),
+          });
+          if (!response.ok) throw new Error("response");
+          const data: A2UIScreen = await response.json();
+          if (
+            data.type !== "a2ui_screen" ||
+            !Array.isArray(data.components) ||
+            !data.components.length
+          )
+            throw new Error("screen");
+          setScreen(data);
+          setActiveIndex(target);
+          setMessages([
+            ...updatedMessages,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content:
+                data.assistantMessage ||
+                "Misma pantalla, con cifras actuales del core.",
+              screen: data,
+              timestamp: Date.now(),
+            },
+          ]);
+          void fetchStatus();
+        }
+        requestAnimationFrame(() => {
+          resultTitle.current?.focus({ preventScroll: true });
+          resultTitle.current?.scrollIntoView({ block: "start" });
+        });
+      } catch {
+        setError("No pudimos recuperar esa pantalla. Inténtalo de nuevo.");
+      } finally {
+        clearTimeout(timeout);
+        busy.current = false;
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       // One request only: retrying a failed POST automatically could repeat an operation.
       const response = await fetch("/api/chat", {
@@ -187,18 +273,22 @@ export function ChatContainer({
       )
         throw new Error("screen");
       setScreen(data);
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content:
-            data.assistantMessage ||
-            "La información está lista. Revísala en tu pantalla.",
-          screen: data,
-          timestamp: Date.now(),
-        },
-      ]);
+      setMessages((previous) => {
+        const next = [
+          ...previous,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content:
+              data.assistantMessage ||
+              "La información está lista. Revísala en tu pantalla.",
+            screen: data,
+            timestamp: Date.now(),
+          } satisfies ChatMessage,
+        ];
+        setActiveIndex(next.length - 1);
+        return next;
+      });
       void fetchStatus();
       requestAnimationFrame(() => {
         resultTitle.current?.focus({ preventScroll: true });
@@ -290,6 +380,7 @@ export function ChatContainer({
       const response = await fetch("/api/reset", { method: "POST" });
       if (!response.ok) throw new Error("reset");
       setMessages([]);
+      setActiveIndex(-1);
       setScreen(null);
       await fetchStatus();
     } catch {
@@ -530,9 +621,19 @@ export function ChatContainer({
                   </button>
                 </div>
               )}
+              {screen?.restoreMode && (
+                <div
+                  className={`history-banner ${screen.restoreMode}`}
+                  role="status"
+                >
+                  {screen.restoreMode === "snapshot"
+                    ? "Copia exacta: así se veía en ese momento, sin actualizar números."
+                    : "Misma pantalla de antes, con cifras actuales del core (después de tus operaciones)."}
+                </div>
+              )}
               {screen ? (
                 <A2UIRenderer
-                  key={screen.screenId}
+                  key={`${screen.screenId}-${activeIndex}-${screen.restoreMode || "live"}`}
                   screen={screen}
                   onAction={onAction}
                   loading={loading}

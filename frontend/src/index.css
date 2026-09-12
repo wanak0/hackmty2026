@@ -1034,6 +1034,24 @@
   font-size: 12px;
   text-align: left;
 }
+.history-banner {
+  margin: 14px 23px 0;
+  padding: 11px 13px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.history-banner.snapshot {
+  background: #fff7ed;
+  border: 1px solid #e2c5a0;
+  color: #783f12;
+}
+.history-banner.fresh {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
 .result-suggestions svg {
   flex-shrink: 0;
   color: var(--red);

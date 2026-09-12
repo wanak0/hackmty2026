@@ -48,6 +48,7 @@ export interface A2UIScreen {
   assistantMessage: string;
   components: A2UIComponent[];
   suggestedPrompts?: string[];
+  restoreMode?: "fresh" | "snapshot";
 }
 
 export interface PlanOption {

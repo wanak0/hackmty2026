@@ -17,6 +17,7 @@ export interface A2UIScreen {
   assistantMessage: string;
   components: A2UIComponent[];
   suggestedPrompts?: string[];
+  restoreMode?: 'fresh' | 'snapshot';
 }
 
 export interface HistoryItem {
@@ -1031,6 +1032,121 @@ async function handleMutationAction(
   return screen;
 }
 
+function mx(n: number): string {
+  return `$${Number(n).toLocaleString('es-MX')} MXN`;
+}
+
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Misma receta de UI, cifras frescas del MCP. No cambia el árbol de componentes.
+ */
+export function hydrateA2UIScreen(source: A2UIScreen, userId = DEFAULT_USER): A2UIScreen {
+  const status = callMcpTool('get_client_financial_status', { userId }) as any;
+  const health = callMcpTool('get_financial_health_diagnostic', { userId }) as any;
+  const tx = callMcpTool('get_transaction_history', { userId }) as any;
+  const debtSim = callMcpTool('simulate_debt_restructure', {
+    debtAmount: status.totalDebt
+  }) as any;
+  const balance = status.user?.checkingBalance ?? 0;
+  const debt = status.totalDebt ?? 0;
+
+  const cloned = deepClone(source);
+  let transferAmount: number | undefined;
+
+  const walkFind = (comps: A2UIComponent[]) => {
+    for (const comp of comps) {
+      if (comp.type === 'TransferCard' && typeof comp.props.amount === 'number') {
+        transferAmount = comp.props.amount;
+      }
+      if (comp.children) walkFind(comp.children);
+    }
+  };
+  walkFind(cloned.components);
+
+  const patchLabelValue = (label: unknown, current: unknown) => {
+    const l = String(label || '').toLowerCase();
+    if (/(d[eé]bito|disponible|saldo)/.test(l) && !/deuda/.test(l)) return mx(balance);
+    if (/deuda|tarjeta|tdc/.test(l)) return mx(debt);
+    if (/score/.test(l)) return String(health.creditScore);
+    if (/gasto/.test(l)) return mx(tx.totalExpenses);
+    return current;
+  };
+
+  const hydrateComp = (comp: A2UIComponent): A2UIComponent => {
+    const props = { ...comp.props };
+    const type = comp.type;
+
+    if (type === 'MetricGrid') {
+      props.items = (props.items || []).map((item: any) => ({
+        ...item,
+        value: patchLabelValue(item.label, item.value)
+      }));
+    }
+
+    if (type === 'MetricItem' || type === 'StatTile') {
+      props.value = patchLabelValue(props.label || props.title, props.value);
+    }
+
+    if (type === 'MetricComparison') {
+      props.balance = debt;
+      if (debtSim.currentCat != null) props.currentCat = debtSim.currentCat;
+    }
+
+    if (type === 'PlanOptionList') {
+      props.options = debtSim.options;
+    }
+
+    if (type === 'FinancialHealthScore') {
+      props.score = health.creditScore;
+      props.scoreRange = health.scoreRange;
+      props.dti = health.dtiPercentage;
+      props.recommendations = health.recommendations;
+    }
+
+    if (type === 'TransactionTable') {
+      props.transactions = tx.transactions;
+      props.totalExpenses = tx.totalExpenses;
+      props.topCategory = tx.topCategory?.[0] || tx.topCategory;
+    }
+
+    if (type === 'InvestmentSimulator') {
+      const amt = Number(props.amount) || 20000;
+      const days = Number(props.initialDays || props.days) || 91;
+      const inv = callMcpTool('simulate_investment_portfolio', { amount: amt, days }) as any;
+      props.amount = amt;
+      props.initialDays = days;
+      props.options = inv.options;
+    }
+
+    if (type === 'AlertBanner' && transferAmount != null) {
+      const text = String(props.message || '').toLowerCase();
+      if (/alcanza|queda|disponible|saldo|no te/.test(text)) {
+        const ok = balance >= transferAmount;
+        props.variant = ok ? 'success' : 'danger';
+        props.message = ok
+          ? `Sí te alcanza. Quedarían ${mx(balance - transferAmount)} en débito.`
+          : `No te alcanza: pediste ${mx(transferAmount)} y tienes ${mx(balance)}.`;
+      }
+    }
+
+    return {
+      ...comp,
+      props,
+      children: comp.children ? comp.children.map(hydrateComp) : comp.children
+    };
+  };
+
+  return {
+    ...cloned,
+    restoreMode: 'fresh',
+    assistantMessage: `${cloned.assistantMessage}\n\nCifras actualizadas con el core de ahora.`,
+    components: cloned.components.map(hydrateComp)
+  };
+}
+
 /**
  * Pipeline: NLP → MCP → A2UI_MODEL (sin plantillas de negocio).
  */
@@ -1040,6 +1156,18 @@ export async function processUserMessage(
   history?: HistoryItem[]
 ): Promise<A2UIScreen> {
   const userId = context?.userId || DEFAULT_USER;
+
+  if (context?.action === 'RESTORE_SCREEN' && context.screen) {
+    const stored = context.screen as A2UIScreen;
+    if (context.mode === 'snapshot') {
+      return {
+        ...deepClone(stored),
+        restoreMode: 'snapshot',
+        assistantMessage: `${stored.assistantMessage}\n\nCopia exacta de esa pantalla. Los números no se tocaron.`
+      };
+    }
+    return hydrateA2UIScreen(stored, userId);
+  }
 
   // A missing model connection must not masquerade as a generated banking screen.
   if (!ollamaConfigured()) return buildErrorScreen(message);
