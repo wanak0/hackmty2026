@@ -111,16 +111,18 @@ Cada respuesta del agente devuelta por `/api/chat` cumple con este schema estric
 
 ---
 
-## 🛠️ 4. HERRAMIENTAS DEL SERVIDOR MCP (`backend/src/mcp/tools.ts`)
-El servidor MCP expone 7 herramientas que interactúan con `mock_bank.json`:
-1. `getClientFinancialStatus(userId)`: Devuelve cuentas, tarjeta de crédito activa ($18,400 de deuda, CAT 54.2%) y balance de cheques ($14,500).
-2. `simulateDebtRestructure(debtAmount)`: Calcula amortizaciones a 12, 18 y 24 meses con tasas CAT del 32.4% al 36.0%.
-3. `applyDebtRestructuring(userId, cardId, planId, months, monthlyQuota)`: Congela la deuda y emite folio `BNTE-RST-XXXXX`.
-4. `simulateInvestmentPortfolio(amount, days)`: Calcula ganancias en Pagaré Banorte (11.25%) y Cetes (11.00%).
-5. `getTransactionHistory(userId)`: Devuelve compras del mes categorizadas y gastos acumulados.
-6. `executeTransfer(userId, recipientName, amount, concept)`: Descuenta el saldo de débito, registra el movimiento y emite comprobante `SPEI-BNTE-XXXXXX`.
-7. `getFinancialHealthDiagnostic(userId)`: Calcula el Debt-to-Income (DTI), score (685 pts) y recomendaciones.
-8. `resetBankData()`: Restaura el estado de la base de datos para pruebas limpias de demo.
+## 🛠️ 4. HERRAMIENTAS DEL SERVIDOR MCP (`backend/src/mcp/registry.ts` + `tools.ts`)
+El registry MCP (`callMcpTool`) es el **mismo contrato** usado por el orquestador HTTP y por el servidor stdio. Expone:
+1. `get_client_financial_status(userId)`: Devuelve cuentas, tarjeta de crédito activa ($18,400 de deuda, CAT 54.2%) y balance de cheques ($14,500).
+2. `simulate_debt_restructure(debtAmount)`: Calcula amortizaciones a 12, 18 y 24 meses con tasas CAT del 32.4% al 36.0%.
+3. `apply_debt_restructuring(...)`: Congela la deuda y emite folio `BNTE-RST-XXXXX`.
+4. `simulate_investment_portfolio(amount, days)`: Calcula ganancias en Pagaré Banorte (11.25%) y Cetes (11.00%).
+5. `apply_investment(...)`: Debita cheques, registra operación `INV-BNTE-*` y movimiento.
+6. `get_transaction_history(userId)`: Devuelve compras del mes categorizadas y gastos acumulados.
+7. `execute_transfer(...)`: Descuenta el saldo de débito, registra el movimiento y emite comprobante `SPEI-BNTE-XXXXXX`.
+8. `get_financial_health_diagnostic(userId)`: Calcula el Debt-to-Income (DTI), score (685 pts) y recomendaciones.
+
+**Resiliencia:** si Ollama/Gemini no responden, `deterministic.ts` clasifica la intención y arma pantallas A2UI consultando las mismas tools MCP.
 
 ---
 

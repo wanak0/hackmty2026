@@ -42,7 +42,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
         </h1>
 
         <p className="text-base sm:text-lg text-gray-600 max-w-2xl mb-10 leading-relaxed font-medium">
-          El nuevo paradigma de Banca Digital: el modelo de lenguaje de Google Gemini no solo responde con texto, sino que <strong>genera la interfaz viva de Banorte Móvil</strong> que resuelve al instante la necesidad financiera del cliente.
+          El nuevo paradigma de Banca Digital: el agente (Ollama Cloud · Gemma) no solo responde con texto, sino que <strong>genera la interfaz viva de Banorte Móvil</strong> que resuelve al instante la necesidad financiera del cliente.
         </p>
 
         {/* CTA Principal */}
@@ -112,9 +112,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
             <div className="w-11 h-11 rounded-2xl bg-[#FFF0F2] border border-[#FECDD3] flex items-center justify-center text-[#EB0029] mb-4">
               <Cpu className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-black text-gray-900 mb-2">Google Gemini 2.5</h3>
+            <h3 className="text-base font-black text-gray-900 mb-2">Ollama Cloud · Gemma</h3>
             <p className="text-xs text-gray-600 leading-relaxed font-medium">
-              Interpreta el lenguaje natural, detecta la intención financiera y toma decisiones agénticas para armar la pantalla en tiempo real.
+              Interpreta el lenguaje natural, detecta la intención financiera y diseña pantallas A2UI en JSON (con Gemini como fallback opcional).
             </p>
           </div>
 

@@ -3,11 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { processUserMessage } from './agent/ollama.js';
 import { getClientFinancialStatus, resetBankData, loadBankData } from './mcp/tools.js';
+import { MCP_TOOL_DEFINITIONS } from './mcp/registry.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const DEFAULT_MODEL = 'gemma4:3.1b';
 
 app.use(cors());
 app.use(express.json());
@@ -19,7 +21,12 @@ app.get('/api/health', (req, res) => {
     service: 'Banorte A2UI Orchestrator & MCP Backend',
     version: '2.0.0 (Pure A2UI)',
     engine: 'Ollama Cloud',
-    model: process.env.OLLAMA_MODEL || 'gemma4:31b'
+    model: process.env.OLLAMA_MODEL || DEFAULT_MODEL,
+    mcp: {
+      tools: MCP_TOOL_DEFINITIONS.length,
+      registry: 'in-process + stdio server'
+    },
+    fallback: 'deterministic NLP + MCP tools'
   });
 });
 
@@ -27,8 +34,11 @@ app.get('/api/config', (req, res) => {
   res.json({
     provider: 'Ollama Cloud',
     host: process.env.OLLAMA_HOST || 'https://ollama.com',
-    model: process.env.OLLAMA_MODEL || 'gemma4:31b',
-    hasApiKey: Boolean(process.env.OLLAMA_API_KEY && process.env.OLLAMA_API_KEY !== 'tu_clave_de_ollama_aqui')
+    model: process.env.OLLAMA_MODEL || DEFAULT_MODEL,
+    hasApiKey: Boolean(
+      process.env.OLLAMA_API_KEY && !process.env.OLLAMA_API_KEY.includes('tu_clave')
+    ),
+    mcpTools: MCP_TOOL_DEFINITIONS.map((t) => t.name)
   });
 });
 

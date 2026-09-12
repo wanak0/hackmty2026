@@ -27,6 +27,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
   const [clientStatus, setClientStatus] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [toast, setToast] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+
+  const showToast = (type: 'error' | 'success', message: string) => {
+    setToast({ type, message });
+    window.setTimeout(() => setToast(null), 4500);
+  };
 
   // Cliente resiliente: intenta primero por proxy de Vite y hace fallback directo a 127.0.0.1:3001
   const apiFetch = async (url: string, options?: RequestInit): Promise<Response> => {
@@ -49,6 +55,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
       }
     } catch (e) {
       console.error('Error cargando estado del cliente', e);
+      showToast('error', 'No se pudo cargar el estado bancario. ¿Está el backend en :3001?');
     }
   };
 
@@ -90,7 +97,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
           history: []
         })
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data: A2UIScreen = await res.json();
+      if (!data?.type && data && (data as any).error) {
+        throw new Error((data as any).error);
+      }
       setScreen(data);
 
       const assistantMsg: ChatMessage = {
@@ -103,6 +116,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (error) {
       console.error('Error al comunicarse con el backend A2UI:', error);
+      showToast('error', 'No se pudo generar la pantalla A2UI. Revisa que el backend esté activo.');
     } finally {
       setLoading(false);
     }
@@ -144,7 +158,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
           history: historyPayload
         })
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data: A2UIScreen = await res.json();
+      if (!data?.components && (data as any)?.error) {
+        throw new Error((data as any).error);
+      }
       setScreen(data);
 
       const assistantMsg: ChatMessage = {
@@ -158,6 +178,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
       fetchStatus();
     } catch (error) {
       console.error('Error procesando mensaje:', error);
+      showToast('error', 'Falló la comunicación con Maya. Intenta de nuevo o reinicia la demo.');
     } finally {
       setLoading(false);
     }
@@ -213,7 +234,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
           history: historyPayload
         })
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
+      if (!data?.components && data?.error) {
+        throw new Error(data.error);
+      }
       setScreen(data);
 
       const assistantMsg: ChatMessage = {
@@ -225,8 +252,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
       };
       setMessages((prev) => [...prev, assistantMsg]);
       fetchStatus();
+      if (data.screenId?.includes('success')) {
+        showToast('success', 'Operación aplicada en el core bancario (MCP).');
+      }
     } catch (error) {
       console.error('Error aplicando acción A2UI:', error);
+      showToast('error', 'No se pudo aplicar la acción bancaria. Revisa el backend.');
     } finally {
       setLoading(false);
     }
@@ -235,17 +266,35 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
   // Reiniciar la base de datos para la demo
   const handleReset = async () => {
     try {
-      await apiFetch('/api/reset', { method: 'POST' });
+      const res = await apiFetch('/api/reset', { method: 'POST' });
+      if (!res.ok) throw new Error('reset failed');
       setMessages([]);
       fetchStatus();
+      showToast('success', 'Demo reiniciada a valores de fábrica.');
       initAgent('Quiero pagar menos intereses de mi tarjeta');
     } catch (e) {
       console.error('Error reseteando demo:', e);
+      showToast('error', 'No se pudo reiniciar la demo.');
     }
   };
 
+  const checkingBalance =
+    clientStatus?.user?.checkingBalance ?? clientStatus?.checkingBalance ?? 14500;
+
   return (
     <div className="min-h-screen bg-[#F2F4F8] text-[#1E242D] flex flex-col selection:bg-[#EB0029] selection:text-white">
+      {toast && (
+        <div
+          role="status"
+          className={`fixed top-20 right-4 z-50 max-w-sm px-4 py-3 rounded-2xl shadow-lg text-xs font-bold border ${
+            toast.type === 'error'
+              ? 'bg-white border-red-200 text-red-700'
+              : 'bg-white border-emerald-200 text-emerald-800'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
       {/* Topbar Oficial Banorte */}
       <header className="bg-[#EB0029] text-white shadow-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -323,7 +372,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                 <span className="text-gray-300">•</span>
                 <span className="text-[#EB0029] font-semibold flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  Gemma 4:31b
+                  Gemma 4:3.1b · Ollama
                 </span>
               </div>
             </div>
@@ -389,7 +438,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                   <div>
                     <span className="text-[10px] text-gray-500 uppercase font-semibold block">Saldo Disponible</span>
                     <div className="text-lg font-black text-emerald-700">
-                      ${clientStatus?.checkingBalance?.toLocaleString('es-MX') || '14,500'}{' '}
+                      ${Number(checkingBalance).toLocaleString('es-MX')}{' '}
                       <span className="text-xs font-normal text-gray-500">MXN</span>
                     </div>
                   </div>
@@ -470,7 +519,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ onBackToLanding })
                   </div>
                   <div className="text-xs font-bold text-gray-900 mt-0.5">
                     {reasoningPhase === 1 && 'Paso 1: Consultando Core Bancario Banorte (MCP Tools)...'}
-                    {reasoningPhase === 2 && 'Paso 2: Razonando intención y diseñando pantalla con Gemma 4:31b (Ollama Cloud)...'}
+                    {reasoningPhase === 2 && 'Paso 2: Razonando intención y diseñando pantalla con Gemma 4:3.1b (Ollama Cloud)...'}
                     {reasoningPhase >= 3 && 'Paso 3: Dibujando componentes A2UI en el lienzo principal...'}
                   </div>
                 </div>

@@ -254,6 +254,73 @@ export function simulateInvestmentPortfolio(amount: number = 25000, days: number
 }
 
 /**
+ * Tool 4b: apply_investment
+ * Debita la cuenta de cheques y registra la inversión en el core.
+ */
+export function applyInvestment(
+  userId: string,
+  amount: number,
+  days: number,
+  productId: string = 'inv_pagare_banorte'
+) {
+  const data = loadBankData();
+  const user = data.users.find((u) => u.id === userId);
+  if (!user) throw new Error('Usuario no encontrado');
+
+  if (user.checkingBalance < amount) {
+    throw new Error(
+      `Saldo insuficiente para invertir ($${user.checkingBalance} MXN disponible, se requieren $${amount}).`
+    );
+  }
+
+  const simulation = simulateInvestmentPortfolio(amount, days);
+  const product =
+    simulation.options.find((o) => o.id === productId) || simulation.options[0];
+
+  user.checkingBalance -= amount;
+  const operationId = `INV-BNTE-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  data.operations.push({
+    operationId,
+    type: 'INVESTMENT',
+    userId,
+    productId: product.id,
+    productName: product.name,
+    amount,
+    days,
+    annualRate: product.annualRate,
+    profitNet: product.profitNet,
+    totalFinal: product.totalFinal,
+    timestamp: new Date().toISOString(),
+    status: 'APPLIED'
+  });
+
+  data.transactions.unshift({
+    id: `tx_${Date.now()}`,
+    userId,
+    concept: `Inversión ${product.name} (${days} días)`,
+    category: 'Inversiones',
+    amount,
+    date: new Date().toISOString().split('T')[0],
+    type: 'EXPENSE'
+  });
+
+  saveBankData(data);
+
+  return {
+    success: true,
+    operationId,
+    productName: product.name,
+    amount,
+    days,
+    annualRate: product.annualRate,
+    profitNet: product.profitNet,
+    totalFinal: product.totalFinal,
+    remainingBalance: user.checkingBalance
+  };
+}
+
+/**
  * Tool 5: get_transaction_history
  * Consulta el historial de movimientos y desglose de gastos
  */
