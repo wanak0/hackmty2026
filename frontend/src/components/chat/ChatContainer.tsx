@@ -320,7 +320,7 @@ export function ChatContainer({
           <span>Demo · Sin dinero real</span>
         </div>
       </div>
-      <header className="site-header">
+      <header className="site-header site-header--red">
         <div className="page-width header-inner">
           <button
             className="logo-home"
@@ -328,7 +328,7 @@ export function ChatContainer({
             disabled={loading}
             aria-label="Volver a la bienvenida"
           >
-            <BanorteLogo size="lg" />
+            <BanorteLogo size="lg" variant="white" />
           </button>
           <div className="header-tools">
             <button

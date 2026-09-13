@@ -187,6 +187,30 @@
   background: white;
   border-bottom: 1px solid var(--line);
 }
+.site-header--red {
+  background: var(--red);
+  border-bottom-color: #c40022;
+  color: white;
+}
+.site-header--red .header-tools,
+.site-header--red .header-tools button,
+.site-header--red .user-name {
+  color: white;
+}
+.site-header--red .header-tools button:hover {
+  color: #fff5f5;
+}
+.site-header--red .text-size-control[aria-pressed="true"] {
+  color: white;
+  text-decoration: underline;
+}
+.site-header--red .header-divider {
+  background: rgba(255, 255, 255, 0.35);
+}
+.site-header--red .user-avatar {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
 .header-inner {
   min-height: 87px;
   display: flex;
@@ -1499,6 +1523,66 @@
 .maya-chat-modal--open {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
+}
+.maya-dock-voice {
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translate3d(18px, 8px, 0) scale(0.72);
+  pointer-events: none;
+  transition:
+    width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.32s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.maya-dock-voice.is-visible {
+  width: 3.75rem;
+  max-width: 3.75rem;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  pointer-events: auto;
+}
+.maya-dock-voice.is-listening {
+  width: 3.75rem;
+  max-width: 3.75rem;
+}
+.maya-voice-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 16px;
+}
+.maya-voice-bars i {
+  display: block;
+  width: 3px;
+  border-radius: 99px;
+  background: white;
+  transform-origin: center bottom;
+  animation: maya-voice-bar 0.85s ease-in-out infinite;
+}
+.maya-voice-bars i:nth-child(1) {
+  height: 7px;
+  animation-delay: 0s;
+}
+.maya-voice-bars i:nth-child(2) {
+  height: 16px;
+  animation-delay: 0.14s;
+}
+.maya-voice-bars i:nth-child(3) {
+  height: 10px;
+  animation-delay: 0.28s;
+}
+@keyframes maya-voice-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
 }
 .maya-chat-modal--exit {
   opacity: 0;

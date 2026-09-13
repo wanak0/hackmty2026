@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   MessageSquare,
   X,
@@ -10,9 +10,11 @@ import {
   Layers,
   ArrowUpRight,
   ChevronRight,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 import { ChatMessage } from "../../types/a2ui";
+import { speakMayaReply, stopMayaSpeech, useVoiceChat } from "./useVoiceChat";
 
 export interface ChatTask {
   icon: LucideIcon;
@@ -61,6 +63,8 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 }) => {
   const [inputText, setInputText] = useState("");
   const [showTooltip, setShowTooltip] = useState(true);
+  const [dockHover, setDockHover] = useState(false);
+  const dockLeaveTimer = useRef<number | null>(null);
   const [showCanvasNotice, setShowCanvasNotice] = useState(false);
   const [panelMounted, setPanelMounted] = useState(isOpen);
   const [panelPhase, setPanelPhase] = useState<"open" | "enter" | "exit">(
@@ -68,6 +72,30 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const speakNextReply = useRef(false);
+  const lastSpokenId = useRef<string | null>(null);
+
+  const handleVoiceTranscript = useCallback(
+    (text: string) => {
+      if (loading) return;
+      speakNextReply.current = true;
+      onSendMessage(text);
+    },
+    [loading, onSendMessage],
+  );
+
+  const voice = useVoiceChat(handleVoiceTranscript);
+
+  useEffect(() => {
+    if (loading || !speakNextReply.current) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || lastSpokenId.current === last.id) {
+      return;
+    }
+    lastSpokenId.current = last.id;
+    speakNextReply.current = false;
+    speakMayaReply(last.content);
+  }, [loading, messages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -107,8 +135,20 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || loading) return;
+    speakNextReply.current = false;
+    stopMayaSpeech();
+    voice.stop();
     onSendMessage(inputText.trim());
     setInputText("");
+  };
+
+  const handleVoiceClick = () => {
+    if (loading) return;
+    if (voice.listening) {
+      voice.stop();
+      return;
+    }
+    voice.start();
   };
 
   const handlePromptClick = (text: string) => {
@@ -382,45 +422,102 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
         </div>
       )}
 
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
-        {!isOpen && showTooltip && (
-          <button
-            type="button"
-            onClick={onToggle}
-            className="hidden max-w-xs cursor-pointer items-center gap-2.5 rounded-xl border border-[#E6E6E6] bg-white px-3.5 py-2.5 text-left shadow-xl transition-all hover:border-[#EB0029] sm:flex"
-          >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF0F1] text-[#EB0029]">
-              <Sparkles className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-[#1A1A1A]">
-                <span>Maya Banorte</span>
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+      <div
+        className="fixed bottom-6 right-6 z-50 flex items-end gap-2.5"
+        onMouseEnter={() => {
+          if (dockLeaveTimer.current != null) {
+            window.clearTimeout(dockLeaveTimer.current);
+          }
+          setDockHover(true);
+        }}
+        onMouseLeave={() => {
+          dockLeaveTimer.current = window.setTimeout(
+            () => setDockHover(false),
+            180,
+          );
+        }}
+      >
+        {(dockHover || isOpen || panelMounted || voice.listening) &&
+          !isOpen &&
+          showTooltip && (
+            <div className="hidden max-w-xs items-start gap-2 rounded-xl bg-[#EB0029] px-3.5 py-2.5 text-left text-white shadow-xl sm:flex">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
-              <p className="max-w-[180px] truncate text-[10px] text-gray-500">
-                {lastAssistantMessage?.content ||
-                  "Abre el chat y elige qué necesitas"}
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                  <span>Maya Banorte</span>
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                </div>
+                <p className="max-w-[180px] truncate text-[10px] text-white/90">
+                  {voice.error ||
+                    voice.interim ||
+                    (voice.listening
+                      ? "Te escucho… habla ahora"
+                      : lastAssistantMessage?.content ||
+                        "Elige chat o voz")}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Ocultar encabezado"
+                onClick={() => setShowTooltip(false)}
+                className="ml-1 p-0.5 text-white/80 hover:text-white"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </div>
-            <span
-              role="presentation"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowTooltip(false);
-              }}
-              className="ml-1 p-0.5 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-3 w-3" />
-            </span>
-          </button>
-        )}
+          )}
 
         {!isOpen && !panelMounted && showCanvasNotice && (
-          <div className="maya-canvas-notice flex items-center gap-2 rounded-full border border-[#E6E6E6] bg-white px-3 py-1.5 text-xs font-semibold text-[#323E48] shadow-md">
-            <Sparkles className="h-3.5 w-3.5 text-[#EB0029]" />
+          <div className="maya-canvas-notice flex items-center gap-2 rounded-full bg-[#EB0029] px-3 py-1.5 text-xs font-semibold text-white shadow-md">
+            <Sparkles className="h-3.5 w-3.5" />
             <span>Lista en el lienzo</span>
           </div>
         )}
+
+        <div
+          className={`maya-dock-voice ${
+            dockHover || isOpen || panelMounted || voice.listening
+              ? "is-visible"
+              : ""
+          } ${voice.listening ? "is-listening" : ""}`}
+        >
+          <button
+            type="button"
+            onClick={handleVoiceClick}
+            disabled={loading}
+            title={
+              voice.supported
+                ? voice.listening
+                  ? "Dejar de escuchar"
+                  : "Hablarle a Maya"
+                : "El chat de voz funciona en Chrome o Edge"
+            }
+            aria-label={
+              voice.listening ? "Detener chat de voz" : "Activar chat de voz"
+            }
+            aria-pressed={voice.listening}
+            className={`relative flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-full border-2 text-white transition-colors hover:scale-105 active:scale-95 disabled:opacity-40 sm:h-14 sm:w-14 ${
+              voice.listening
+                ? "border-white bg-[#8F0017] shadow-lg"
+                : "border-white bg-[#EB0029] shadow-md"
+            }`}
+          >
+            {voice.listening ? (
+              <span className="maya-voice-bars" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
+            <span className="mt-0.5 text-[8px] font-black uppercase tracking-tighter">
+              Voz
+            </span>
+          </button>
+        </div>
 
         <div className="relative">
           <span className="pointer-events-none absolute -inset-2 animate-banorte-halo rounded-full" />
@@ -444,7 +541,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
               <div className="flex flex-col items-center justify-center">
                 <MessageSquare className="h-6 w-6 stroke-[2.2]" />
                 <span className="mt-0.5 text-[9px] font-black uppercase tracking-tighter">
-                  MAYA
+                  Chat
                 </span>
               </div>
             )}
