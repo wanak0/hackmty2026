@@ -62,28 +62,47 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
   const [inputText, setInputText] = useState("");
   const [showTooltip, setShowTooltip] = useState(true);
   const [showCanvasNotice, setShowCanvasNotice] = useState(false);
+  const [panelMounted, setPanelMounted] = useState(isOpen);
+  const [panelPhase, setPanelPhase] = useState<"open" | "enter" | "exit">(
+    isOpen ? "open" : "exit",
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setPanelMounted(true);
+      setPanelPhase("enter");
+      const enterFrame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setPanelPhase("open"));
+      });
+      return () => cancelAnimationFrame(enterFrame);
     }
-  }, [messages, isOpen, loading]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    setPanelPhase("exit");
+    const timer = window.setTimeout(() => setPanelMounted(false), 340);
+    return () => clearTimeout(timer);
   }, [isOpen]);
 
   useEffect(() => {
-    if (hasGeneratedScreen && messages.length > 1) {
-      setShowCanvasNotice(true);
-      const timer = setTimeout(() => setShowCanvasNotice(false), 5000);
+    if (isOpen && panelPhase === "open") {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isOpen, loading, panelPhase]);
+
+  useEffect(() => {
+    if (isOpen && panelPhase === "open") {
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 180);
       return () => clearTimeout(timer);
     }
-  }, [hasGeneratedScreen, messages.length]);
+  }, [isOpen, panelPhase]);
+
+  useEffect(() => {
+    if (!isOpen && hasGeneratedScreen && messages.length > 1) {
+      setShowCanvasNotice(true);
+      const timer = setTimeout(() => setShowCanvasNotice(false), 3200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, hasGeneratedScreen, messages.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,12 +130,18 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
 
   return (
     <aside aria-label="Asistente Virtual Maya Banorte">
-      {isOpen && (
+      {panelMounted && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="maya-chat-title"
-          className="maya-chat-modal fixed bottom-24 right-4 sm:right-6 z-50 flex w-[calc(100vw-2rem)] sm:w-[420px] max-h-[82vh] h-[640px] flex-col overflow-hidden rounded-xl border border-[#E6E6E6] bg-white shadow-2xl"
+          className={`maya-chat-modal fixed bottom-24 right-4 sm:right-6 z-50 flex w-[calc(100vw-2rem)] sm:w-[420px] max-h-[82vh] h-[640px] flex-col overflow-hidden rounded-xl border border-[#E6E6E6] bg-white shadow-2xl ${
+            panelPhase === "enter"
+              ? "maya-chat-modal--enter"
+              : panelPhase === "exit"
+                ? "maya-chat-modal--exit"
+                : "maya-chat-modal--open"
+          }`}
         >
           <div className="flex shrink-0 items-center justify-between bg-[#EB0029] p-3.5 text-white">
             <div className="flex items-center gap-3">
@@ -390,10 +415,10 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
           </button>
         )}
 
-        {!isOpen && showCanvasNotice && (
-          <div className="flex animate-bounce items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>¡Vista lista en el lienzo!</span>
+        {!isOpen && !panelMounted && showCanvasNotice && (
+          <div className="maya-canvas-notice flex items-center gap-2 rounded-full border border-[#E6E6E6] bg-white px-3 py-1.5 text-xs font-semibold text-[#323E48] shadow-md">
+            <Sparkles className="h-3.5 w-3.5 text-[#EB0029]" />
+            <span>Lista en el lienzo</span>
           </div>
         )}
 
@@ -403,13 +428,17 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
             type="button"
             onClick={onToggle}
             aria-label={
-              isOpen ? "Cerrar asistente Maya" : "Abrir asistente Maya Banorte"
+              isOpen || panelMounted
+                ? "Cerrar asistente Maya"
+                : "Abrir asistente Maya Banorte"
             }
             className={`banorte-bubble-glow relative flex h-14 w-14 transform items-center justify-center rounded-full bg-banorte-gradient text-white transition-all duration-300 hover:scale-105 active:scale-90 sm:h-16 sm:w-16 ${
-              isOpen ? "rotate-90 bg-gray-800" : "animate-banorte-float"
+              isOpen || panelMounted
+                ? "rotate-90 bg-gray-800"
+                : "animate-banorte-float"
             }`}
           >
-            {isOpen ? (
+            {isOpen || panelMounted ? (
               <X className="h-6 w-6 stroke-[2.5] text-white" />
             ) : (
               <div className="flex flex-col items-center justify-center">
@@ -419,7 +448,7 @@ export const ChatBubbleModal: React.FC<ChatBubbleModalProps> = ({
                 </span>
               </div>
             )}
-            {!isOpen && (
+            {!isOpen && !panelMounted && (
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#EB0029] bg-white text-[10px] font-semibold text-[#EB0029] shadow-md">
                 {messages.length > 0 ? messages.length : "!"}
               </span>

@@ -107,6 +107,7 @@ export function ChatContainer({
   const controller = useRef<AbortController | null>(null);
   const resultTitle = useRef<HTMLHeadingElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const dockChatTimer = useRef<number | null>(null);
 
   const fetchStatus = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -127,6 +128,9 @@ export function ChatContainer({
     return () => {
       statusController.abort();
       controller.current?.abort();
+      if (dockChatTimer.current != null) {
+        window.clearTimeout(dockChatTimer.current);
+      }
     };
   }, [fetchStatus]);
   useEffect(() => {
@@ -197,10 +201,20 @@ export function ChatContainer({
         },
       ]);
       void fetchStatus();
-      requestAnimationFrame(() => {
-        resultTitle.current?.focus({ preventScroll: true });
-        resultTitle.current?.scrollIntoView({ block: "start" });
-      });
+      // Soft-dock Maya so the canvas is readable without a hard close.
+      if (dockChatTimer.current != null) {
+        window.clearTimeout(dockChatTimer.current);
+      }
+      dockChatTimer.current = window.setTimeout(() => {
+        setChatOpen(false);
+        requestAnimationFrame(() => {
+          resultTitle.current?.focus({ preventScroll: true });
+          resultTitle.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          });
+        });
+      }, 780);
     } catch {
       setError(
         context.action && mutationLabels[String(context.action)]

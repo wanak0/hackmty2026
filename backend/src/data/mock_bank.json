@@ -43,6 +43,15 @@
   ],
   "transactions": [
     {
+      "id": "tx_1789257827315",
+      "userId": "usr_carlos_01",
+      "concept": "Transf. a undefined: undefined",
+      "category": "Transferencias",
+      "amount": 0,
+      "date": "2026-09-13",
+      "type": "EXPENSE"
+    },
+    {
       "id": "tx_01",
       "userId": "usr_carlos_01",
       "concept": "Supermercado HEB San Pedro",
@@ -141,6 +150,15 @@
       "monthlyQuota": 980,
       "appliedAt": "2026-09-12T20:26:24.540Z",
       "status": "APPLIED"
+    },
+    {
+      "operationId": "SPEI-BNTE-919458",
+      "type": "TRANSFER",
+      "userId": "usr_carlos_01",
+      "recipient": "undefined",
+      "amount": 0,
+      "concept": "undefined",
+      "timestamp": "2026-09-13T00:03:47.315Z"
     }
   ]
 }

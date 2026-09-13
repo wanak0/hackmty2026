@@ -12,6 +12,17 @@ description: >-
 Companion to [`nlp-a2ui`](../nlp-a2ui/SKILL.md). That skill owns the NLP → MCP → A2UI loop.
 **This skill owns charts and visual style** on the canvas.
 
+### Related generative-UI skills (installed)
+
+| Skill | Use for | Banorte note |
+|-------|---------|--------------|
+| [`frontend-design`](../frontend-design/SKILL.md) | Direction / anti-generic UI when editing React/CSS chrome | Defer to **Brand lock** below on the A2UI canvas |
+| [`design-taste-frontend`](../design-taste-frontend/SKILL.md) | Extra craft / polish pass | Same: keep Banorte tokens + Inter |
+| [`web-design-guidelines`](../web-design-guidelines/SKILL.md) | a11y / UX review after visual changes | Safe to apply fully |
+| [`a2ui-component-validate`](../a2ui-component-validate/SKILL.md) | Validate A2UI catalog, props, charts, actions, contract tests | Required after chart/prompt/canvas edits |
+| [`shadcn-component-review`](../shadcn-component-review/SKILL.md) | Audit React chart/adapters vs shadcn patterns | Use on `frontend/src/components/a2ui/*` |
+| [`enforce-design-system`](../enforce-design-system/SKILL.md) | Design-system compliance audit | Prefer shadcn + Banorte tokens |
+
 ## When to apply
 
 - User asks for gráficas, charts, donut, barras, progress, “hazlo más Banorte”, tokens, layout polish.

@@ -21,7 +21,7 @@ user message / UI action
   → siguiente prompt puede refinar el mismo lienzo      context.currentSurface
 ```
 
-For **gráficas / estilos visuales** (donut, barras, progress, tokens Banorte, Anthropic frontend-design adapted): use [`.cursor/skills/a2ui-charts-style/SKILL.md`](../a2ui-charts-style/SKILL.md).
+For **gráficas / estilos visuales** (donut, barras, progress, tokens Banorte): use [`.cursor/skills/a2ui-charts-style/SKILL.md`](../a2ui-charts-style/SKILL.md). For **validación de componentes / catálogo A2UI**: [`a2ui-component-validate`](../a2ui-component-validate/SKILL.md) (+ [`shadcn-component-review`](../shadcn-component-review/SKILL.md), [`enforce-design-system`](../enforce-design-system/SKILL.md), [`shadcn`](../shadcn/SKILL.md)). For generative UI craft on React/CSS chrome: [`frontend-design`](../frontend-design/SKILL.md), [`design-taste-frontend`](../design-taste-frontend/SKILL.md); for a11y/UX review: [`web-design-guidelines`](../web-design-guidelines/SKILL.md). On the A2UI canvas, Banorte brand lock in `a2ui-charts-style` wins.
 
 Key files:
 
@@ -71,3 +71,4 @@ Key files:
 - [ ] Refinement passes `currentSurface`
 - [ ] Text paths never point at nested objects
 - [ ] `npx tsx test-ui-contract.ts` passes
+- [ ] After UI changes, run [`a2ui-component-validate`](../a2ui-component-validate/SKILL.md)
